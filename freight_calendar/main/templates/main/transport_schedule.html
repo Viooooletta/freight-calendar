@@ -1,0 +1,214 @@
+{% extends 'main/base_dashboard.html' %}
+
+{% block title %}График рейсов | Freight Calendar{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+<style>
+    /* Делаем календарь визуально приятнее */
+    #calendar {
+        background: white;
+        padding: 15px;
+        border-radius: 1rem;
+    }
+    .fc-event {
+        cursor: pointer;
+        font-size: 0.85em;
+    }
+
+    .status-btn {
+        transition: 0.2s;
+        opacity: 0.8;
+    }
+    .status-btn:hover {
+        opacity: 1;
+    }
+
+    /* Цвета для строк заказов */
+    .status-delivered {
+        background-color: #d1e7dd !important;
+        border-left: 5px solid #0f5132 !important;
+    }
+    .status-canceled {
+        background-color: #f8d7da !important;
+        border-left: 5px solid #842029 !important;
+        opacity: 0.8;
+    }
+    .order-row {
+        transition: all 0.3s ease;
+        border-left: 5px solid transparent;
+    }
+</style>
+{% endblock %}
+
+{% block sidebar_nav %}
+<a href="{% url 'transport_dashboard' %}" class="nav-link"><span>🚛</span> Управление автопарком</a>
+<a href="{% url 'transport_schedule' %}" class="nav-link active"><span>📋</span> График рейсов</a>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <h1 class="display-6 fw-bold mb-0">График рейсов</h1>
+        <p class="text-muted mb-0">Выбранная дата: <span id="currentDateDisplay" class="fw-bold text-primary">{{ today|date:"d E Y" }}</span></p>
+    </div>
+    <div class="col-md-6 text-md-end">
+        <button onclick="location.reload()" class="btn btn-outline-secondary btn-sm">🔄 Перейти к сегодняшнему плану</button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="table-card shadow-sm h-100 p-3" id="scheduleContainer">
+            <h4 class="fw-bold mb-4">Рейсы на сегодня</h4>
+
+            {% for plan in today_plans %}
+            <div class="card mb-4 border-0 shadow-sm overflow-hidden" style="border-radius: 1rem;">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0">🚚 {{ plan.vehicle.name }}</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for item in plan.planitem_set.all %}
+                        <div class="list-group-item p-3 d-flex justify-content-between align-items-center order-row {% if item.order.status == 'delivered' %}status-delivered{% elif item.order.status == 'canceled' %}status-canceled{% endif %}"
+                             id="order-{{ item.order.id }}">
+                            <div style="max-width: 60%;">
+                                <div class="fw-bold text-truncate">{{ item.order.address }}</div>
+                                <small class="text-muted">{{ item.order.weight }} кг | {{ item.order.volume }} м³</small>
+                            </div>
+                            <div class="btn-group shadow-sm">
+                                <button type="button"
+                                        class="btn btn-sm btn-success btn-status-update"
+                                        data-id="{{ item.order.id }}"
+                                        data-status="delivered" title="Доставлено">
+                                    ✅
+                                </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-danger btn-status-update"
+                                        data-id="{{ item.order.id }}"
+                                        data-status="canceled" title="Отмена">
+                                    ❌
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5">
+                <div class="display-1 text-muted opacity-25">📋</div>
+                <p class="text-muted">На эту дату планов пока нет.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="table-card shadow-sm">
+            <div id="calendar"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const scheduleContainer = document.getElementById('scheduleContainer');
+        const dateDisplay = document.getElementById('currentDateDisplay');
+
+        // 1. Инициализация календаря
+        const calendarEl = document.getElementById('calendar');
+        if (calendarEl) {
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'ru',
+                height: 'auto',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,dayGridWeek'
+                },
+                events: "{% url 'api_calendar_events' %}",
+                dateClick: function(info) {
+                    loadScheduleForDate(info.dateStr);
+                },
+                eventClick: function(info) {
+                    // Если кликнули по событию, берем дату этого события
+                    const clickedDate = info.event.startStr.split('T')[0];
+                    loadScheduleForDate(clickedDate);
+                }
+            });
+            calendar.render();
+        }
+
+        // 2. Функция загрузки данных на выбранный день
+        function loadScheduleForDate(dateStr) {
+            // Добавим легкий эффект загрузки
+            scheduleContainer.style.opacity = '0.5';
+
+            fetch(`/api/transport/schedule/${dateStr}/`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Ошибка сервера');
+                    return response.json();
+                })
+                .then(data => {
+                    scheduleContainer.innerHTML = data.html;
+                    // Обновляем текстовое отображение даты в заголовке
+                    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                    const formattedDate = new Date(dateStr).toLocaleDateString('ru-RU', options);
+                    dateDisplay.innerText = formattedDate;
+                })
+                .catch(err => {
+                    console.error('Ошибка:', err);
+                    alert('Не удалось загрузить данные на эту дату.');
+                })
+                .finally(() => {
+                    scheduleContainer.style.opacity = '1';
+                });
+        }
+
+        // 3. Обработчик для кнопок статуса (Делегирование)
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-status-update');
+            if (!btn) return;
+
+            const orderId = btn.dataset.id;
+            const newStatus = btn.dataset.status;
+
+            btn.disabled = true;
+
+            fetch(`/transport/order/${orderId}/status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({status: newStatus})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const row = document.getElementById('order-' + orderId);
+                    if (row) {
+                        row.classList.remove('status-delivered', 'status-canceled');
+                        row.classList.add('status-' + newStatus);
+                    }
+                } else {
+                    alert('Ошибка: ' + (data.message || 'не удалось обновить статус'));
+                }
+            })
+            .catch(err => {
+                console.error('Ошибка:', err);
+                alert('Связь с сервером потеряна');
+            })
+            .finally(() => {
+                btn.disabled = false;
+            });
+        });
+    });
+</script>
+{% endblock %}

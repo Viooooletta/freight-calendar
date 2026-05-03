@@ -1,0 +1,58 @@
+{% extends 'main/base_dashboard.html' %}
+
+{% block title %}Проверка планов | Freight Calendar{% endblock %}
+
+{% block sidebar_nav %}
+<a href="{% url 'logistics_dashboard' %}" class="nav-link"><span>📦</span> Управление заказами</a>
+<a href="{% url 'planning_dashboard' %}" class="nav-link active"><span>📅</span> Формирование плана</a>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="display-6 fw-bold mb-0">Проверка сформированных планов</h1>
+
+    {% if drafts %}
+    <form action="{% url 'approve_all_drafts' %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success btn-lg shadow-sm">✅ Утвердить все планы</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="row">
+    {% for plan in drafts %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-primary text-white d-flex justify-content-between">
+                <span>📅 {{ plan.date }}</span>
+                <span class="badge bg-light text-primary">Черновик</span>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-truck"></i> {{ plan.vehicle.name }}</h5>
+                <hr>
+                <ul class="list-group list-group-flush mb-3">
+                    {% for item in plan.planitem_set.all %}
+                    <li class="list-group-item px-0 d-flex justify-content-between small">
+                        <span>📍 {{ item.order.address }}</span>
+                        <span class="text-muted">{{ item.order.weight }}кг</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="card-footer bg-white border-top-0">
+                <div class="progress" style="height: 10px;">
+                    {# Тут можно заморочиться и посчитать % загрузки через JS или template tag #}
+                    <div class="progress-bar bg-info" role="progressbar" style="width: 70%"></div>
+                </div>
+                <small class="text-muted mt-2 d-block">Машина заполнена на основе лимитов</small>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <h3 class="text-muted">Нет новых черновиков для проверки</h3>
+        <a href="{% url 'planning_dashboard' %}" class="btn btn-outline-primary mt-3">Перейти к формированию</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

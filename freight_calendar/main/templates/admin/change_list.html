@@ -1,0 +1,48 @@
+{% extends "admin/base_site.html" %}
+{% load admin_list %}
+
+{% block admin_content %}
+<div id="content-main">
+    {% if cl.formset and cl.formset.errors %}
+    <p class="errornote">Пожалуйста, исправьте ошибки ниже.</p>
+    {% endif %}
+
+    <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
+
+        <div id="changelist-search">
+            {% block search %}{% search_form cl %}{% endblock %}
+        </div>
+
+        <div class="d-flex flex-column flex-lg-row align-items-start justify-content-between gap-4">
+            <div class="flex-grow-1 w-100">
+                <form id="changelist-form" method="post" {% if cl.formset and cl.formset.is_multipart %}
+                      enctype="multipart/form-data" {% endif %} novalidate>
+                    {% csrf_token %}
+
+                    {% if cl.formset %}
+                    <div>{{ cl.formset.management_form }}</div>
+                    {% endif %}
+
+                    {% block result_list %}
+                    <div class="results card border-0 shadow-sm" style="border-radius: 1.2rem; overflow: hidden;">
+                        {% result_list cl %}
+                    </div>
+                    {% endblock %}
+
+                    {% block pagination %}{% pagination cl %}{% endblock %}
+                </form>
+            </div>
+
+            {% block filters %}
+            {% if cl.has_filters %}
+            <div id="changelist-filter" style="min-width: 240px;">
+                <h2>Фильтры</h2>
+                {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
+            </div>
+            {% endif %}
+            {% endblock %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}

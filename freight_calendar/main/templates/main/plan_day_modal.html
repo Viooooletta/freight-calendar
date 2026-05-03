@@ -1,0 +1,40 @@
+<div class="modal-header border-0 pb-0 pt-4 px-4">
+    <h4 class="fw-bold mb-0" style="color: var(--brand-color);">План на {{ date }}</h4>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body p-4">
+    {% if plans %}
+        <div class="row">
+            {% for plan in plans %}
+            <div class="col-md-6 mb-3">
+                <div class="p-3 h-100 rounded-4" style="background: var(--brand-soft); border: 1px solid rgba(146, 68, 122, 0.1);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">🚚 {{ plan.vehicle.name }}</h6>
+                        <span class="badge rounded-pill {% if plan.status == 'draft' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                            {{ plan.get_status_display }}
+                        </span>
+                    </div>
+                    <ul class="list-unstyled mb-0">
+                        {% for item in plan.planitem_set.all %}
+                        <li class="py-2 border-bottom border-white d-flex justify-content-between align-items-center small">
+                            <span class="text-dark">📍 {{ item.order.address }}</span>
+                            <span class="badge bg-white text-muted border">{{ item.order.weight }}кг</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <p class="text-muted">На этот день отгрузок пока не запланировано.</p>
+        </div>
+    {% endif %}
+</div>
+
+<div class="modal-footer border-0 pt-0 px-4 pb-4">
+    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Закрыть</button>
+    <a href="{% url 'planning_dashboard' %}" class="btn text-white rounded-3" style="background: var(--brand-color);">Добавить заказы</a>
+</div>

@@ -1,13 +1,232 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Транспортный отдел</title>
-</head>
-<body>
+{% extends 'main/base_dashboard.html' %}
 
-</body>
-</html>
+{% block title %}Транспортный отдел | Freight Calendar{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-create-sm {
+        background: var(--brand-color);
+        color: white;
+        border-radius: 0.8rem;
+        padding: 0.6rem 1.5rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: 0.3s;
+        display: inline-block;
+    }
+
+    .btn-create-sm:hover {
+        background: #7a3865;
+        color: white;
+        box-shadow: 0 5px 15px rgba(146, 68, 122, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block sidebar_icon %}🚛{% endblock %}
+
+{% block sidebar_nav %}
+<a href="{% url 'transport_dashboard' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_dashboard' %}active{% endif %}">
+    <span>🚛</span> Управление автопарком
+</a>
+<a href="{% url 'transport_schedule' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_schedule' %}active{% endif %}">
+    <span>📋</span> График рейсов
+</a>{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <span class="badge mb-2" style="background: var(--brand-light); color: var(--brand-color); font-weight: 700;">TRANSPORT DEPT</span>
+        <h1 class="display-6 fw-bold mb-0">Управление автопарком</h1>
+    </div>
+    <p class="text-muted mb-0">Машин в парке: {{ vehicles.count }}</p>
+</div>
+
+<div class="filter-panel shadow-sm">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label class="small text-muted fw-bold ms-1">Госномер / Марка</label>
+            <input type="text" name="search" class="form-control" placeholder="🔍 Поиск..."
+                   value="{{ request.GET.search }}">
+        </div>
+        <div class="col-md-2">
+            <label class="small text-muted fw-bold ms-1">Мин. г/п (кг)</label>
+            <input type="number" name="min_weight" class="form-control" value="{{ request.GET.min_weight }}">
+        </div>
+        <div class="col-md-2">
+            <label class="small text-muted fw-bold ms-1">Мин. объем (м³)</label>
+            <input type="number" step="0.1" name="min_volume" class="form-control" value="{{ request.GET.min_volume }}">
+        </div>
+        <div class="col"></div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-outline-secondary w-100" style="height: 45px;">Применить</button>
+        </div>
+        <div class="col-md-2">
+            <a href="." class="btn btn-outline-danger w-100"
+               style="height: 45px; display: flex; align-items: center; justify-content: center; text-decoration: none;">Сбросить</a>
+        </div>
+    </form>
+</div>
+
+<div class="table-card shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0">Список автомобилей</h4>
+        <a href="{% url 'vehicle_create' %}" class="btn"
+           style="background: var(--brand-color); color: white; border-radius: 0.8rem; padding: 0.6rem 1.5rem; font-weight: 600; text-decoration: none;">+
+            Добавить машину</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+            <tr class="text-muted small text-uppercase">
+                <th>ID</th>
+                <th>Название/Номер авто</th>
+                <th>Грузоподъемность (кг)</th>
+                <th>Объем кузова (м³)</th>
+                <th class="text-end">Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for vehicle in vehicles %}
+            <tr id="vehicle-row-{{ vehicle.id }}">
+                <td class="fw-bold">#{{ vehicle.id }}</td>
+                <td class="col-name">
+                    <span class="view-mode">{{ vehicle.name }}</span>
+                    <input type="text" class="form-control form-control-sm edit-mode d-none" value="{{ vehicle.name }}">
+                </td>
+                <td class="col-weight">
+                    <span class="view-mode">{{ vehicle.capacity_weight }} кг</span>
+                    <input type="number" step="0.1" class="form-control form-control-sm edit-mode d-none"
+                           value="{{ vehicle.capacity_weight|stringformat:'.1f' }}">
+                </td>
+                <td class="col-volume">
+                    <span class="view-mode">{{ vehicle.capacity_volume }} м³</span>
+                    <input type="number" step="0.1" class="form-control form-control-sm edit-mode d-none"
+                           value="{{ vehicle.capacity_volume|stringformat:'.1f' }}">
+                </td>
+                <td class="text-end">
+                    <div class="view-actions">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-edit-trigger"
+                                data-id="{{ vehicle.id }}">✏️
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-trigger"
+                                data-id="{{ vehicle.id }}" data-url="{% url 'vehicle_delete' vehicle.id %}">🗑
+                        </button>
+                    </div>
+                    <div class="edit-actions d-none">
+                        <button type="button" class="btn btn-sm btn-success btn-save-trigger" data-id="{{ vehicle.id }}"
+                                data-url="{% url 'vehicle_update_inline' vehicle.id %}">✅
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center py-4 text-muted">Транспортные средства не найдены</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 1.5rem; border: none;">
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3" style="font-size: 3rem;">⚠️</div>
+                <h4 class="fw-bold mb-2">Удалить транспорт?</h4>
+                <p class="text-muted" id="deleteModalText">Вы действительно хотите удалить эту машину из базы?</p>
+                <div class="d-flex gap-2 justify-content-center mt-4">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal"
+                            style="border-radius: 0.8rem;">Отмена
+                    </button>
+                    <button type="button" id="confirmDeleteBtn" class="btn btn-danger px-4"
+                            style="border-radius: 0.8rem;">Удалить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let idToDelete = null;
+        let urlToDelete = null;
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+
+        document.addEventListener('click', function (e) {
+            const editBtn = e.target.closest('.btn-edit-trigger');
+            if (editBtn) {
+                toggleRow(editBtn.dataset.id);
+                return;
+            }
+
+            const saveBtn = e.target.closest('.btn-save-trigger');
+            if (saveBtn) {
+                saveRow(saveBtn.dataset.id, saveBtn.dataset.url);
+                return;
+            }
+
+            const delBtn = e.target.closest('.btn-delete-trigger');
+            if (delBtn) {
+                idToDelete = delBtn.dataset.id;
+                urlToDelete = delBtn.dataset.url;
+                deleteModal.show();
+            }
+        });
+
+        function toggleRow(id) {
+            const row = document.getElementById('vehicle-row-' + id);
+            row.querySelectorAll('.view-mode, .edit-mode, .view-actions, .edit-actions').forEach(el => el.classList.toggle('d-none'));
+        }
+
+        function saveRow(id, url) {
+            const row = document.getElementById('vehicle-row-' + id);
+            const payload = {
+                name: row.querySelector('.col-name input').value,
+                capacity_weight: row.querySelector('.col-weight input').value,
+                capacity_volume: row.querySelector('.col-volume input').value
+            };
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        row.querySelector('.col-name .view-mode').innerText = payload.name;
+                        row.querySelector('.col-weight .view-mode').innerText = payload.capacity_weight + ' кг';
+                        row.querySelector('.col-volume .view-mode').innerText = payload.capacity_volume + ' м³';
+                        toggleRow(id);
+                    } else {
+                        alert("Ошибка: " + (data.message || "не удалось сохранить"));
+                    }
+                });
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+            if (!urlToDelete) return;
+            fetch(urlToDelete, {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest'}
+            }).then(res => {
+                if (res.ok) location.reload();
+            });
+        });
+    });
+</script>
+{% endblock %}
