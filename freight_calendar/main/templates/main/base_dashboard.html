@@ -4,121 +4,143 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Freight Calendar{% endblock %}</title>
-    <!-- Bootstrap & Google Fonts -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet">
     <style>
         :root {
             --brand-color: #92447a;
             --brand-light: #fdf6fa;
             --brand-soft: rgba(146, 68, 122, 0.05);
             --text-dark: #2d1225;
-            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-bg: rgba(255, 255, 255, 0.8);
         }
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background: radial-gradient(circle at top right, #fdf6fa, #ffffff, #f4f7f6);
-            min-height: 100vh;
-            color: var(--text-dark);
+            background: #f8fafc;
             margin: 0;
+            overflow-x: hidden;
         }
-        .bg-blob {
-            position: fixed;
-            width: 400px;
-            height: 400px;
-            background: var(--brand-light);
-            filter: blur(100px);
-            border-radius: 50%;
-            z-index: -1;
-        }
+
+        /* Сайдбар */
         .sidebar {
             background: var(--glass-bg);
             backdrop-filter: blur(15px);
             border-right: 1px solid rgba(146, 68, 122, 0.1);
-            min-height: 100vh;
-            padding: 2.5rem 1.5rem;
-            position: sticky;
+            height: 100vh;
+            padding: 2rem 1rem;
+            position: fixed;
+            left: 0;
             top: 0;
+            width: 280px;
+            transition: all 0.3s ease;
+            z-index: 1000;
         }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
         .nav-link {
             color: var(--text-dark);
             font-weight: 600;
-            padding: 1rem 1.2rem;
-            border-radius: 1rem;
-            margin-bottom: 0.5rem;
-            transition: all 0.3s ease;
+            padding: 0.8rem 1.2rem;
+            border-radius: 0.8rem;
+            margin-bottom: 0.3rem;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             text-decoration: none;
+            overflow: hidden;
+            white-space: nowrap;
         }
+
         .nav-link:hover {
             background: var(--brand-soft);
             color: var(--brand-color);
-            transform: translateX(5px);
         }
+
         .nav-link.active {
             background: var(--brand-color);
             color: white !important;
-            box-shadow: 0 10px 20px rgba(146, 68, 122, 0.2);
-        }
-        .main-content { padding: 3rem; }
-
-        /* Общие стили для карточек, фильтров и таблиц */
-        .filter-panel, .table-card, .form-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border-radius: 1.5rem;
-            padding: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            margin-bottom: 2rem;
-        }
-        .form-control {
-            border-radius: 0.8rem;
-            border: 1px solid rgba(146, 68, 122, 0.1);
         }
 
-        {% block extra_css %}{% endblock %}
+        /* Контент */
+        .main-content {
+            margin-left: 280px;
+            padding: 2rem 3rem;
+            transition: all 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+        }
+
+        #sidebarToggle {
+            position: fixed;
+            top: 1.5rem;
+            left: 1.5rem;
+            z-index: 1100;
+            background: white;
+            border: 1px solid rgba(146, 68, 122, 0.2);
+            border-radius: 0.6rem;
+            padding: 0.5rem 0.9rem;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--brand-color);
+            box-shadow: 0 4px 12px rgba(146, 68, 122, 0.08) !important;
+            transition: all 0.2s ease-in-out;
+        }
+
+        #sidebarToggle:hover {
+            border-color: var(--brand-color);
+            background: var(--brand-light);
+            transform: translateY(-2px);
+        }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Фоновые декоративные элементы -->
-    <div class="bg-blob" style="top: -10%; right: -10%;"></div>
-    <div class="bg-blob" style="bottom: 10%; left: 10%;"></div>
-
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Боковая панель (Sidebar) -->
-            <nav class="col-md-2 sidebar d-none d-md-block">
-                <div class="d-flex align-items-center mb-5 px-3">
-                    <div style="background: var(--brand-light); width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                        {% block sidebar_icon %}🚚{% endblock %}
-                    </div>
-                    <span class="fw-bold h5 mb-0" style="color: var(--brand-color);">FreightCal</span>
-                </div>
-
-                <div class="nav flex-column">
-                    {% block sidebar_nav %}{% endblock %}
-
-                    <div class="mt-5 pt-5">
-                        <hr style="opacity: 0.1;">
-                        <a href="/" class="nav-link text-danger"><span>🚪</span> Выйти</a>
-                    </div>
-                </div>
-            </nav>
-
-            <!-- Основной контент страницы -->
-            <main class="col-md-10 main-content">
-                {% block content %}{% endblock %}
-            </main>
+<button type="button" id="sidebarToggle" class="shadow-sm">
+    ☰
+</button>
+<nav class="sidebar" id="sidebar">
+    <div class="d-flex align-items-center mb-5 px-3">
+        <div style="background: var(--brand-light); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+            🚚
+        </div>
+        <span class="fw-bold h5 mb-0" style="color: var(--brand-color);">FreightCal</span>
+    </div>
+    <div class="nav flex-column">
+        {% block sidebar_nav %}
+        <a href="{% url 'logistics_dashboard' %}" class="nav-link active"><span>📦</span> Управление заказами</a>
+        <a href="{% url 'planning_dashboard' %}" class="nav-link"><span>📅</span> Формирование плана</a>
+        {% endblock %}
+        <div class="mt-auto">
+            <hr style="opacity: 0.1;">
+            <a href="/" class="nav-link text-danger"><span>🚪</span> Выйти</a>
         </div>
     </div>
+</nav>
 
-    <!-- Блок для модальных окон (удаление и т.д.) -->
-    {% block modals %}{% endblock %}
+<main class="main-content" id="mainContent">
+    {% block content %}{% endblock %}
+</main>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    {% block extra_js %}{% endblock %}
+<script>
+    const btn = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    const content = document.getElementById('mainContent');
+
+    btn.onclick = () => {
+        sidebar.classList.toggle('hidden');
+        content.classList.toggle('expanded');
+
+        // Добавляем/убираем класс для плавной анимации кнопки
+        btn.classList.toggle('shifted');
+    };
+</script>
 </body>
 </html>

@@ -11,6 +11,7 @@
         padding: 15px;
         border-radius: 1rem;
     }
+
     .fc-event {
         cursor: pointer;
         font-size: 0.85em;
@@ -20,6 +21,7 @@
         transition: 0.2s;
         opacity: 0.8;
     }
+
     .status-btn:hover {
         opacity: 1;
     }
@@ -29,11 +31,13 @@
         background-color: #d1e7dd !important;
         border-left: 5px solid #0f5132 !important;
     }
+
     .status-canceled {
         background-color: #f8d7da !important;
         border-left: 5px solid #842029 !important;
         opacity: 0.8;
     }
+
     .order-row {
         transition: all 0.3s ease;
         border-left: 5px solid transparent;
@@ -42,18 +46,21 @@
 {% endblock %}
 
 {% block sidebar_nav %}
-<a href="{% url 'transport_dashboard' %}" class="nav-link"><span>🚛</span> Управление автопарком</a>
+<a href="{% url 'transport_dashboard' %}" class="nav-link ">
+    <span>🚛</span> Управление автопарком</a>
 <a href="{% url 'transport_schedule' %}" class="nav-link active"><span>📋</span> График рейсов</a>
 {% endblock %}
 
 {% block content %}
-<div class="row mb-4 align-items-center">
+<div class="d-flex justify-content-between align-items-center" style="margin-top: 4.5rem; margin-bottom: 2.5rem;">
     <div class="col-md-6">
         <h1 class="display-6 fw-bold mb-0">График рейсов</h1>
-        <p class="text-muted mb-0">Выбранная дата: <span id="currentDateDisplay" class="fw-bold text-primary">{{ today|date:"d E Y" }}</span></p>
+        <p class="text-muted mb-0">Выбранная дата: <span id="currentDateDisplay" class="fw-bold text-primary">{{ today|date:"d E Y" }}</span>
+        </p>
     </div>
     <div class="col-md-6 text-md-end">
-        <button onclick="location.reload()" class="btn btn-outline-secondary btn-sm">🔄 Перейти к сегодняшнему плану</button>
+        <button onclick="location.reload()" class="btn btn-outline-secondary btn-sm">🔄 Перейти к сегодняшнему плану
+        </button>
     </div>
 </div>
 
@@ -74,7 +81,8 @@
                              id="order-{{ item.order.id }}">
                             <div style="max-width: 60%;">
                                 <div class="fw-bold text-truncate">{{ item.order.address }}</div>
-                                <small class="text-muted">{{ item.order.weight }} кг | {{ item.order.volume }} м³</small>
+                                <small class="text-muted">{{ item.order.weight }} кг | {{ item.order.volume }}
+                                    м³</small>
                             </div>
                             <div class="btn-group shadow-sm">
                                 <button type="button"
@@ -132,10 +140,10 @@
                     right: 'dayGridMonth,dayGridWeek'
                 },
                 events: "{% url 'api_calendar_events' %}",
-                dateClick: function(info) {
+                dateClick: function (info) {
                     loadScheduleForDate(info.dateStr);
                 },
-                eventClick: function(info) {
+                eventClick: function (info) {
                     // Если кликнули по событию, берем дату этого события
                     const clickedDate = info.event.startStr.split('T')[0];
                     loadScheduleForDate(clickedDate);
@@ -157,7 +165,7 @@
                 .then(data => {
                     scheduleContainer.innerHTML = data.html;
                     // Обновляем текстовое отображение даты в заголовке
-                    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                    const options = {year: 'numeric', month: 'long', day: 'numeric'};
                     const formattedDate = new Date(dateStr).toLocaleDateString('ru-RU', options);
                     dateDisplay.innerText = formattedDate;
                 })
@@ -189,25 +197,25 @@
                 },
                 body: JSON.stringify({status: newStatus})
             })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    const row = document.getElementById('order-' + orderId);
-                    if (row) {
-                        row.classList.remove('status-delivered', 'status-canceled');
-                        row.classList.add('status-' + newStatus);
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const row = document.getElementById('order-' + orderId);
+                        if (row) {
+                            row.classList.remove('status-delivered', 'status-canceled');
+                            row.classList.add('status-' + newStatus);
+                        }
+                    } else {
+                        alert('Ошибка: ' + (data.message || 'не удалось обновить статус'));
                     }
-                } else {
-                    alert('Ошибка: ' + (data.message || 'не удалось обновить статус'));
-                }
-            })
-            .catch(err => {
-                console.error('Ошибка:', err);
-                alert('Связь с сервером потеряна');
-            })
-            .finally(() => {
-                btn.disabled = false;
-            });
+                })
+                .catch(err => {
+                    console.error('Ошибка:', err);
+                    alert('Связь с сервером потеряна');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                });
         });
     });
 </script>

@@ -5,11 +5,11 @@
 
 {% block extra_css %}
     <style>
-        /* Полная зачистка синего цвета и стандартных отступов Django */
+        /* Очистка стандартных стилей Django */
         #header, .breadcrumbs, .module h2, .module caption, #footer, .submit-row { display: none !important; }
         #content { padding: 0 !important; margin: 0 !important; background: transparent !important; }
 
-        /* Убираем синие ссылки везде */
+        /* Убираем синие ссылки */
         a, a:link, a:visited, .changelist-filter a {
             color: var(--brand-color) !important;
             text-decoration: none !important;
@@ -17,10 +17,9 @@
         }
         a:hover { color: #7a3865 !important; }
 
-        /* Скрываем ненужные разделы через CSS (для надежности) */
+        /* Скрываем системные блоки авторизации Django */
         .app-auth, .model-group, .auth-group { display: none !important; }
 
-        /* Оболочка контента */
         .admin-content-wrapper {
             background: var(--glass-bg);
             backdrop-filter: blur(12px);
@@ -30,8 +29,7 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
         }
 
-        /* Кнопки */
-        .button, input[type=submit], .btn-main-style {
+        .button, input[type=submit] {
             background: var(--brand-color) !important;
             color: #fff !important;
             border-radius: 0.8rem !important;
@@ -40,7 +38,7 @@
             border: none !important;
         }
 
-        /* Стилизация карточек на главной странице админки */
+        /* Сетка для главной страницы админки */
         .admin-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -56,62 +54,18 @@
             flex-direction: column;
             justify-content: space-between;
         }
-        .admin-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 20px rgba(146, 68, 122, 0.05);
-            border-color: var(--brand-color);
-        }
-        /* Полностью скрываем колонку с чекбоксами (и в заголовке, и в строках) */
-.action-checkbox, .action-checkbox-column {
-    display: none !important;
-}
+        .admin-card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px rgba(146, 68, 122, 0.05); border-color: var(--brand-color); }
 
-/* Оформляем ячейки таблицы для современного вида */
-table tbody td, table thead th {
-    border: none !important; /* Убираем лишние границы */
-    padding: 1rem 1.5rem !important;
-}
+        /* Стили таблиц (убираем чекбоксы и границы) */
+        .action-checkbox, .action-checkbox-column { display: none !important; }
+        table tbody td, table thead th { border: none !important; padding: 1rem 1.5rem !important; }
+        table tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important; }
+        table tbody tr:hover { background-color: rgba(146, 68, 122, 0.03) !important; cursor: pointer; }
 
-/* Эффект выделения строки при наведении */
-table tbody tr {
-    transition: background-color 0.2s ease;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
-}
-
-table tbody tr:hover {
-    background-color: rgba(146, 68, 122, 0.03) !important;
-    cursor: pointer;
-}
-
-/* Стилизация статусов (если у тебя есть поле "Статус") */
-/* Это добавит цветные "пилюли" для текста */
-.field-status, .column-status {
-    font-weight: 700;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-}
-
-/* Улучшаем поиск */
-#changelist-search img {
-    display: none; /* Убираем старую иконку лупы Django */
-}
-
-#searchbar {
-    background: #f8f9fa !important;
-    border: 1px solid #e9ecef !important;
-    box-shadow: none !important;
-    padding: 0.8rem 1.2rem !important;
-    font-size: 0.9rem;
-}
-
-/* Делаем пагинацию (переключатель страниц) красивее */
-.paginator {
-    border-top: 1px solid #eee;
-    padding: 1.5rem !important;
-    background: #fff;
-    font-weight: 600;
-    color: #adb5bd;
-}
+        .field-status, .column-status { font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
+        #changelist-search img { display: none; }
+        #searchbar { background: #f8f9fa !important; border: 1px solid #e9ecef !important; box-shadow: none !important; padding: 0.8rem 1.2rem !important; font-size: 0.9rem; }
+        .paginator { border-top: 1px solid #eee; padding: 1.5rem !important; background: #fff; font-weight: 600; color: #adb5bd; }
     </style>
 {% endblock %}
 

@@ -1,87 +1,274 @@
 {% extends 'main/base_dashboard.html' %}
-{% load i18n static %}
-
-{% block title %}{% if title %}{{ title }} | {% endif %}FreightCal Admin{% endblock %}
 
 {% block extra_css %}
-    <style>
-        /* Прячем стандартные элементы Django, которые выдают "улики" */
-        #header, .breadcrumbs, .module h2, .module caption, #footer { display: none !important; }
+<style>
+    .stats-card {
+        background: white;
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        border: 1px solid #eee;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        /* Сброс стандартных отступов Django */
-        #content { padding: 0 !important; }
-        .colMS, .colM { margin-left: 0 !important; }
+    .stats-card:hover {
+        border-color: var(--brand-color);
+        box-shadow: 0 10px 30px rgba(146, 68, 122, 0.08);
+        transform: translateY(-3px);
+    }
 
-        /* Стилизация стандартных таблиц Django под твой проект */
-        #changelist-form .results {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border-radius: 1.5rem;
-            border: 1px solid rgba(146, 68, 122, 0.1);
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
-        }
+    /* Наклейка "Всего" с круглыми углами */
+    .total-card {
+        background: var(--brand-color);
+        color: white;
+        border-radius: 3rem;
+    }
 
-        table thead th {
-            background: rgba(146, 68, 122, 0.03) !important;
-            border-bottom: 1px solid rgba(146, 68, 122, 0.1) !important;
-            color: var(--brand-color) !important;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 1px;
-            padding: 1.2rem !important;
-        }
+    /* Таблица */
+    .table-container {
+        background: white;
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    }
 
-        table tbody tr { transition: all 0.2s ease; border-bottom: 1px solid rgba(0,0,0,0.03) !important; }
-        table tbody tr:hover { background: var(--brand-soft) !important; }
-        table tbody td { padding: 1rem 1.2rem !important; color: var(--text-dark); }
+    /* Редактирование: теперь все горизонтально */
+    .edit-mode {
+        display: none;
+    }
 
-        /* Стилизация фильтров (правая панель) */
-        #changelist-filter {
-            background: white !important;
-            border-left: 1px solid rgba(146, 68, 122, 0.1) !important;
-            position: relative !important;
-            top: 0 !important;
-            width: 250px !important;
-        }
-        #changelist-filter h2 { display: block !important; background: var(--brand-color); color: white; padding: 1rem; margin: 0; font-size: 1rem; }
+    .editing .view-mode {
+        display: none;
+    }
 
-        /* Кнопки */
-        .submit-row, .button, input[type=submit] {
-            background: var(--brand-color) !important;
-            border-radius: 0.8rem !important;
-            padding: 0.8rem 2rem !important;
-            border: none !important;
-            font-weight: 600 !important;
-        }
+    .editing .edit-mode {
+        display: inline-flex;
+        width: 100%;
+        gap: 5px;
+    }
 
-        /* Поле поиска */
-        #searchbar {
-            border-radius: 0.8rem !important;
-            border: 1px solid rgba(146, 68, 122, 0.2) !important;
-            padding: 0.6rem 1rem !important;
-            margin-bottom: 1rem;
-        }
-    </style>
-{% endblock %}
+    .form-control-edit {
+        border-radius: 0.5rem;
+        border: 1px solid #ddd;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.85rem;
+    }
 
-{% block sidebar_nav %}
-    <a href="{% url 'logistics_dashboard' %}" class="nav-link"><span>📦</span> Управление заказами</a>
-    <a href="{% url 'planning_dashboard' %}" class="nav-link"><span>📅</span> Формирование плана</a>
-    <hr style="opacity: 0.1;">
-    <a href="/admin/" class="nav-link active"><span>⚙️</span> Администрирование</a>
+    .error-border {
+        border: 2px solid #ff4d4d !important;
+    }
+
+    /* Кастомная модалка */
+    #deleteModal {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 2rem;
+        border-radius: 1.5rem;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+        z-index: 2000;
+        text-align: center;
+    }
+
+    #modalOverlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        z-index: 1999;
+    }
+
+    .btn-action {
+        background: linear-gradient(135deg, var(--brand-color), #7a3865);
+        color: white !important;
+        border-radius: 1.2rem;
+        padding: 0.8rem 2rem;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 8px 20px rgba(146, 68, 122, 0.2);
+    }
+
+    .btn-action:hover {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 12px 25px rgba(146, 68, 122, 0.3);
+        background: linear-gradient(135deg, #a34e89, var(--brand-color));
+    }
+
+    .btn-action:active {
+        transform: translateY(0);
+    }
+
+</style>
 {% endblock %}
 
 {% block content %}
-    <div class="container-fluid p-0">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="display-6 fw-bold mb-0">{% if title %}{{ title }}{% else %}Управление данными{% endif %}</h1>
-        </div>
+<div id="modalOverlay" onclick="closeDeleteModal()"></div>
+<div id="deleteModal">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+    <h4 class="fw-bold">Удалить заказ?</h4>
+    <p id="modalText" class="text-muted small">Это действие нельзя будет отменить.</p>
+    <div class="d-flex gap-2 justify-content-center mt-4">
+        <button onclick="closeDeleteModal()" class="btn btn-light" style="border-radius: 0.8rem;">Отмена</button>
+        <button id="confirmDeleteBtn" class="btn btn-danger" style="border-radius: 0.8rem;">Да, удалить</button>
+    </div>
+</div>
 
-        <div class="table-card shadow-sm p-4">
-            {% block admin_content %}
-                {{ content }}
-            {% endblock %}
+<div class="d-flex justify-content-between align-items-center" style="margin-top: 4.5rem; margin-bottom: 2.5rem;">
+    <div>
+        <h1 class="fw-bold">Управление заказами</h1>
+        <p class="text-muted">Логист: {{ user.username }}</p>
+    </div>
+    <a href="{% url 'order_create' %}" class="btn-action shadow-sm">+ Создать заказ</a>
+</div>
+
+<div class="row g-3 mb-5">
+    <div class="col-md-2">
+        <div class="stats-card text-center"><small class="text-muted fw-bold">ОЖИДАЮТ</small>
+            <h3 class="fw-bold mt-1 text-warning">{{ count_pending }}</h3></div>
+    </div>
+    <div class="col-md-2">
+        <div class="stats-card text-center"><small class="text-muted fw-bold">ПЛАН</small>
+            <h3 class="fw-bold mt-1 text-info">{{ count_planned }}</h3></div>
+    </div>
+    <div class="col-md-2">
+        <div class="stats-card text-center"><small class="text-muted fw-bold">В ПУТИ</small>
+            <h3 class="fw-bold mt-1 text-primary">{{ count_in_transit }}</h3></div>
+    </div>
+    <div class="col-md-2">
+        <div class="stats-card text-center"><small class="text-muted fw-bold">ГОТОВО</small>
+            <h3 class="fw-bold mt-1 text-success">{{ count_delivered }}</h3></div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card total-card d-flex align-items-center justify-content-between">
+            <div><small class="fw-bold opacity-75">ВСЕГО В БАЗЕ</small>
+                <div class="h2 fw-bold mb-0">{{ total_orders }}</div>
+            </div>
+            <div style="font-size: 2rem; opacity: 0.3;">📊</div>
         </div>
     </div>
+</div>
+
+<div class="table-container">
+    <table class="table align-middle" id="ordersTable">
+        <thead>
+        <tr class="text-muted small uppercase">
+            <th width="60">ID</th>
+            <th>Адрес</th>
+            <th width="180">Объем / Вес</th>
+            <th width="150">Дата</th>
+            <th width="150">Статус</th>
+            <th class="text-end" width="100">Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for order in orders %}
+        <tr id="row-{{ order.id }}">
+            <td><span class="view-mode">#{{ order.id }}</span></td>
+            <td>
+                <span class="view-mode fw-bold">{{ order.address }}</span>
+                <input type="text" id="addr-{{ order.id }}" class="form-control-edit edit-mode"
+                       value="{{ order.address }}" required>
+            </td>
+            <td>
+                <div class="view-mode">
+                    <span class="badge bg-light text-dark">{{ order.volume }} м³</span>
+                    <span class="badge bg-light text-dark">{{ order.weight }} кг</span>
+                </div>
+                <div class="edit-mode">
+                    <input type="number" step="0.1" id="vol-{{ order.id }}" class="form-control-edit"
+                           style="width: 70px;" value='{{ order.volume|stringformat:".1f" }}' required>
+                    <input type="number" step="0.1" id="wei-{{ order.id }}" class="form-control-edit"
+                           style="width: 70px;" value='{{ order.weight|stringformat:".1f" }}' required>
+                </div>
+            </td>
+            <td>
+                <span class="view-mode">{{ order.delivery_data|date:"d.m.Y" }}</span>
+                <input type="date" id="date-{{ order.id }}" class="form-control-edit edit-mode"
+                       value="{{ order.delivery_data|date:'Y-m-d' }}" required>
+            </td>
+            <td>
+                <span class="view-mode status-badge bg-{{ order.status }}">{{ order.get_status_display }}</span>
+                <select id="stat-{{ order.id }}" class="form-control-edit edit-mode">
+                    <option value="pending">Ожидает</option>
+                    <option value="canceled">Отменить</option>
+                </select>
+            </td>
+            <td class="text-end">
+                <div class="view-mode">
+                    <button onclick="toggleEdit('{{ order.id }}')" class="btn btn-sm btn-outline-primary">✏️</button>
+                    <button onclick="confirmDelete('{{ order.id }}')" class="btn btn-sm btn-outline-danger">🗑️</button>
+                </div>
+                <div class="edit-mode">
+                    <button onclick="saveInline('{{ order.id }}')" class="btn btn-sm btn-success">✅</button>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function toggleEdit(id) {
+        document.getElementById(`row-${id}`).classList.toggle('editing');
+    }
+
+    async function saveInline(id) {
+        const data = {
+            address: document.getElementById(`addr-${id}`).value,
+            volume: document.getElementById(`vol-${id}`).value,
+            weight: document.getElementById(`wei-${id}`).value,
+            delivery_data: document.getElementById(`date-${id}`).value,
+            status: document.getElementById(`stat-${id}`).value, // Проверь эту строку
+        };
+
+        // Валидация
+        if (!data.address || !data.volume || !data.weight || !data.delivery_data) {
+            document.querySelectorAll(`#row-${id} input[required]`).forEach(i => {
+                if (!i.value) i.classList.add('error-border');
+                else i.classList.remove('error-border');
+            });
+            return;
+        }
+
+        const response = await fetch(`/logistics/management/orders/${id}/update-inline/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) location.reload();
+    }
+
+    function confirmDelete(id) {
+        document.getElementById('modalText').innerText = `Заказ ID #${id} будет удален из базы навсегда.`;
+        document.getElementById('confirmDeleteBtn').onclick = () => performDelete(id);
+        document.getElementById('modalOverlay').style.display = 'block';
+        document.getElementById('deleteModal').style.display = 'block';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+
+    async function performDelete(id) {
+        const response = await fetch(`/logistics/management/orders/${id}/delete/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        });
+        if (response.ok) location.reload();
+    }
+</script>
 {% endblock %}

@@ -68,13 +68,20 @@ def logistics_view(request):
     if volume_query:
         orders = orders.filter(volume__gte=volume_query)
 
-    # Исправлено: фильтр по весу
     weight_query = request.GET.get('weight')
     if weight_query:
         orders = orders.filter(weight__gte=weight_query)
 
-    return render(request, 'main/logistics.html', {'orders': orders})
-
+    # Контекст вынесен наружу, чтобы данные были всегда
+    context = {
+        'orders': orders,
+        'count_pending': Order.objects.filter(status='pending').count(),
+        'count_planned': Order.objects.filter(status='planned').count(),
+        'count_in_transit': Order.objects.filter(status='shipped').count(),
+        'count_delivered': Order.objects.filter(status='delivered').count(),
+        'total_orders': Order.objects.count(),
+    }
+    return render(request, 'main/logistics.html', context)
 
 # Страница создания заказа
 def order_create_view(request):
@@ -102,12 +109,14 @@ def order_update_inline(request, pk):
             order.weight = data.get('weight')
             order.delivery_data = data.get('delivery_data')
 
+            # ВОТ ЭТА СТРОЧКА:
+            order.status = data.get('status', order.status)
+
             order.save()
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     return JsonResponse({'status': 'error'}, status=405)
-
 
 # Удаление заказа
 def order_delete_view(request, pk):

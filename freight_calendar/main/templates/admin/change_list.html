@@ -9,7 +9,7 @@
 
     <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
 
-        <div id="changelist-search">
+        <div id="changelist-search" class="mb-3">
             {% block search %}{% search_form cl %}{% endblock %}
         </div>
 
@@ -24,7 +24,7 @@
                     {% endif %}
 
                     {% block result_list %}
-                    <div class="results card border-0 shadow-sm" style="border-radius: 1.2rem; overflow: hidden;">
+                    <div class="results card border-0 shadow-sm" style="border-radius: 1.2rem; overflow: hidden; background: white;">
                         {% result_list cl %}
                     </div>
                     {% endblock %}
@@ -36,7 +36,7 @@
             {% block filters %}
             {% if cl.has_filters %}
             <div id="changelist-filter" style="min-width: 240px;">
-                <h2>Фильтры</h2>
+                <h2 style="font-size: 1.1rem !important; margin-bottom: 1rem !important; color: var(--text-dark) !important; font-weight: 700 !important; background: transparent !important; padding: 0 !important; border: none !important;">Фильтры</h2>
                 {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
             </div>
             {% endif %}
