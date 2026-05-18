@@ -1,99 +1,62 @@
 {% extends 'main/base.html' %}
 
-{% block title %}Freight Calendar | Logistics Portal{% endblock %}
+{% block title %}Freight Calendar | Логистический портал{% endblock %}
 
 {% block extra_css %}
 <style>
     .index-wrapper {
-        min-height: 100vh;
+        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 2rem;
     }
-    .hero-card {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        border-radius: 3rem;
-        padding: 4rem 3rem;
-        box-shadow: 0 40px 100px rgba(146, 68, 122, 0.08);
-        max-width: 800px;
-        width: 100%;
-        transition: transform 0.4s ease;
-    }
-    .hero-card:hover {
-        transform: translateY(-5px);
-    }
     .icon-box {
-        width: 100px;
-        height: 100px;
+        width: 80px;
+        height: 80px;
         background: white;
-        border-radius: 2rem;
+        border-radius: 1.5rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 3rem;
-        margin: 0 auto 2.5rem;
-        box-shadow: 0 15px 35px rgba(146, 68, 122, 0.1);
-    }
-    .btn-main {
-        background: var(--brand-color);
-        color: white;
-        padding: 1.2rem 3rem;
-        font-weight: 700;
-        border-radius: 1.2rem;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-block;
-        box-shadow: 0 10px 25px rgba(146, 68, 122, 0.2);
-    }
-    .btn-main:hover {
-        background: #7a3865;
-        transform: scale(1.05);
-        color: white;
-    }
-    .btn-secondary-custom {
-        color: var(--text-dark);
-        background: white;
-        padding: 1.2rem 3rem;
-        font-weight: 700;
-        border-radius: 1.2rem;
-        border: 1px solid rgba(146, 68, 122, 0.1);
-        transition: all 0.3s ease;
-        text-decoration: none;
-        display: inline-block;
-    }
-    .btn-secondary-custom:hover {
-        background: var(--brand-light);
-        border-color: var(--brand-color);
+        font-size: 2.5rem;
+        margin: 0 auto 2rem;
+        box-shadow: 0 10px 25px rgba(146, 68, 122, 0.1);
     }
     .footer-tag {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.2em;
+        letter-spacing: 0.15em;
         color: var(--brand-color);
-        opacity: 0.6;
+        opacity: 0.5;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="index-wrapper">
-    <div class="text-center">
-        <div class="hero-card">
-            <div class="icon-box">🚚</div>
-            <h1 class="display-3 fw-bold mb-3" style="letter-spacing: -1px;">Freight <span style="color: var(--brand-color);">Calendar</span></h1>
-            <p class="lead mb-5 text-muted mx-auto" style="max-width: 600px;">Профессиональная платформа для координации логистики и автоматизации планирования без лишнего хаоса.</p>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <div class="hero-card">
+                    <div class="icon-box">🚚</div>
+                    <h1 class="display-4 fw-bold mb-3" style="letter-spacing: -1px;">
+                        Freight <span style="color: var(--brand-color);">Calendar</span>
+                    </h1>
+                    <p class="lead mb-5 text-muted mx-auto" style="max-width: 550px;">
+                        Профессиональная платформа для координации логистики и автоматизации планирования без лишнего хаоса.
+                    </p>
 
-            <div class="d-flex flex-column flex-sm-row justify-content-center gap-4 mb-5">
-                <a href="{% url 'login' %}" class="btn-main">Войти в портал</a>
-                <a href="{% url 'register' %}" class="btn-secondary-custom">Создать аккаунт</a>
-            </div>
+                    <div class="d-flex flex-column flex-sm-row justify-content-center gap-3 mb-5">
+                        <a href="{% url 'login' %}" class="btn-main">Войти в портал</a>
+                        <a href="{% url 'register' %}" class="btn-secondary-custom">Создать аккаунт</a>
+                    </div>
 
-            <div class="pt-5 mt-2 border-top border-light">
-                <span class="footer-tag">Internal Logistics Control System</span>
+                    <div class="pt-4 border-top border-light">
+                        <span class="footer-tag">Internal Logistics Control System</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

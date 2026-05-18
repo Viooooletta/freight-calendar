@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Freight Calendar{% endblock %}</title>
+    <!-- Bootstrap 5 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <!-- Шрифт Plus Jakarta Sans -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -12,7 +14,7 @@
             --brand-light: #fdf6fa;
             --brand-soft: rgba(146, 68, 122, 0.05);
             --text-dark: #2d1225;
-            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-bg: rgba(255, 255, 255, 0.8);
         }
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -20,27 +22,72 @@
             min-height: 100vh;
             color: var(--text-dark);
             margin: 0;
-            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
         }
         .bg-blob {
             position: fixed;
-            width: 400px;
-            height: 400px;
+            width: 500px;
+            height: 500px;
             background: var(--brand-light);
             filter: blur(100px);
             border-radius: 50%;
             z-index: -1;
+        }
+        /* Общие стили для карточек */
+        .hero-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 2.5rem;
+            padding: 3.5rem;
+            box-shadow: 0 40px 100px rgba(146, 68, 122, 0.08);
+            width: 100%;
+            transition: transform 0.3s ease;
+        }
+        /* Стили кнопок */
+        .btn-main {
+            background: var(--brand-color);
+            color: white;
+            padding: 1rem 2rem;
+            font-weight: 700;
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            border: none;
+        }
+        .btn-main:hover {
+            background: #7a3865;
+            transform: translateY(-2px);
+            color: white;
+            box-shadow: 0 10px 20px rgba(146, 68, 122, 0.2);
+        }
+        .btn-secondary-custom {
+            color: var(--text-dark);
+            background: white;
+            padding: 1rem 2rem;
+            font-weight: 700;
+            border-radius: 1rem;
+            border: 1px solid rgba(146, 68, 122, 0.2);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-secondary-custom:hover {
+            background: var(--brand-light);
+            border-color: var(--brand-color);
+            transform: translateY(-2px);
         }
         {% block extra_css %}{% endblock %}
     </style>
 </head>
 <body>
     <div class="bg-blob" style="top: -10%; right: -10%;"></div>
-    <div class="bg-blob" style="bottom: 10%; left: 10%;"></div>
+    <div class="bg-blob" style="bottom: -10%; left: -10%;"></div>
 
     {% block content %}{% endblock %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    {% block extra_js %}{% endblock %}
 </body>
 </html>

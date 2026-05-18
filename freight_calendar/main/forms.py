@@ -11,12 +11,14 @@ class RegisterForm(UserCreationForm):
 class OrderCreateForm(forms.ModelForm):
     class Meta:
         model = Order
-        fields = ['address', 'volume', 'weight','delivery_data']
+        fields = ['address', 'volume', 'weight', 'delivery_type', 'frequency', 'delivery_data']
         widgets = {
-            'address': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Улица, дом, квартира'}),
-            'volume': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'placeholder': 'м³'}),
-            'weight': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'placeholder': 'кг'}),
             'delivery_data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'address': forms.TextInput(attrs={'class': 'form-control'}),
+            'volume': forms.NumberInput(attrs={'class': 'form-control'}),
+            'weight': forms.NumberInput(attrs={'class': 'form-control'}),
+            'delivery_type': forms.Select(attrs={'class': 'form-select', 'onchange': 'toggleFrequency()'}),
+            'frequency': forms.Select(attrs={'class': 'form-select'}),
         }
 
 class VehicleCreateForm(forms.ModelForm):

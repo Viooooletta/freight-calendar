@@ -1,4 +1,5 @@
 {% extends 'main/base_dashboard.html' %}
+{% load l10n %}
 
 {% block title %}Транспортный отдел | Freight Calendar{% endblock %}
 
@@ -33,7 +34,12 @@
 <a href="{% url 'transport_schedule' %}"
    class="nav-link {% if request.resolver_match.url_name == 'transport_schedule' %}active{% endif %}">
     <span>📋</span> График рейсов
-</a>{% endblock %}
+</a>
+<a href="{% url 'transport_maintenance' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_maintenance' %}active{% endif %}">
+    <span>🛠️</span> Календарь простоев
+</a>
+{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -47,7 +53,7 @@
 <div class="filter-panel shadow-sm">
     <form method="get" class="row g-3 align-items-end">
         <div class="col-md-3">
-            <label class="small text-muted fw-bold ms-1">Госномер / Марка</label>
+            <label class="small text-muted fw-bold ms-1">Госномер</label>
             <input type="text" name="search" class="form-control" placeholder="🔍 Поиск..."
                    value="{{ request.GET.search }}">
         </div>
@@ -99,12 +105,12 @@
                 <td class="col-weight">
                     <span class="view-mode">{{ vehicle.capacity_weight }} кг</span>
                     <input type="number" step="0.1" class="form-control form-control-sm edit-mode d-none"
-                           value="{{ vehicle.capacity_weight|stringformat:'.1f' }}">
+                           value="{{ vehicle.capacity_weight|unlocalize }}">
                 </td>
                 <td class="col-volume">
                     <span class="view-mode">{{ vehicle.capacity_volume }} м³</span>
                     <input type="number" step="0.1" class="form-control form-control-sm edit-mode d-none"
-                           value="{{ vehicle.capacity_volume|stringformat:'.1f' }}">
+                           value="{{ vehicle.capacity_volume|unlocalize }}">
                 </td>
                 <td class="text-end">
                     <div class="view-actions">
@@ -116,8 +122,12 @@
                         </button>
                     </div>
                     <div class="edit-actions d-none">
-                        <button type="button" class="btn btn-sm btn-success btn-save-trigger" data-id="{{ vehicle.id }}"
+                        <button type="button" class="btn btn-sm btn-success btn-save-trigger me-1"
+                                data-id="{{ vehicle.id }}"
                                 data-url="{% url 'vehicle_update_inline' vehicle.id %}">✅
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-cancel-trigger"
+                                data-id="{{ vehicle.id }}">❌
                         </button>
                     </div>
                 </td>
@@ -160,36 +170,60 @@
     document.addEventListener('DOMContentLoaded', function () {
         let idToDelete = null;
         let urlToDelete = null;
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
 
+        // Делегирование событий клика
         document.addEventListener('click', function (e) {
+            // Клик по кнопке «Редактировать»
             const editBtn = e.target.closest('.btn-edit-trigger');
             if (editBtn) {
                 toggleRow(editBtn.dataset.id);
                 return;
             }
 
+            // Клик по кнопке «Отмена»
+            const cancelBtn = e.target.closest('.btn-cancel-trigger');
+            if (cancelBtn) {
+                toggleRow(cancelBtn.dataset.id);
+                return;
+            }
+
+            // Клик по кнопке «Сохранить» (Галочка)
             const saveBtn = e.target.closest('.btn-save-trigger');
             if (saveBtn) {
                 saveRow(saveBtn.dataset.id, saveBtn.dataset.url);
                 return;
             }
 
+            // Клик по кнопке «Удалить» (Корзина)
             const delBtn = e.target.closest('.btn-delete-trigger');
             if (delBtn) {
                 idToDelete = delBtn.dataset.id;
                 urlToDelete = delBtn.dataset.url;
-                deleteModal.show();
+
+                const modalElement = document.getElementById('deleteConfirmModal');
+                if (modalElement && typeof bootstrap !== 'undefined') {
+                    const deleteModal = new bootstrap.Modal(modalElement);
+                    deleteModal.show();
+                } else {
+                    // Альтернативный вариант на случай сбоя стилей Bootstrap
+                    if (confirm("Вы действительно хотите удалить эту машину из базы?")) {
+                        executeDeletion();
+                    }
+                }
             }
         });
 
         function toggleRow(id) {
             const row = document.getElementById('vehicle-row-' + id);
-            row.querySelectorAll('.view-mode, .edit-mode, .view-actions, .edit-actions').forEach(el => el.classList.toggle('d-none'));
+            if (row) {
+                row.querySelectorAll('.view-mode, .edit-mode, .view-actions, .edit-actions').forEach(el => el.classList.toggle('d-none'));
+            }
         }
 
         function saveRow(id, url) {
             const row = document.getElementById('vehicle-row-' + id);
+            if (!row) return;
+
             const payload = {
                 name: row.querySelector('.col-name input').value,
                 capacity_weight: row.querySelector('.col-weight input').value,
@@ -205,28 +239,54 @@
                 },
                 body: JSON.stringify(payload)
             })
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error("Ошибка сервера: " + res.status);
+                    return res.json();
+                })
                 .then(data => {
                     if (data.status === 'success') {
+                        // Обновляем текст на странице
                         row.querySelector('.col-name .view-mode').innerText = payload.name;
                         row.querySelector('.col-weight .view-mode').innerText = payload.capacity_weight + ' кг';
                         row.querySelector('.col-volume .view-mode').innerText = payload.capacity_volume + ' м³';
                         toggleRow(id);
                     } else {
-                        alert("Ошибка: " + (data.message || "не удалось сохранить"));
+                        alert("Ошибка: " + (data.message || "Не удалось сохранить изменения."));
                     }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Сетевая ошибка при сохранении данных.");
                 });
         }
 
-        document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+        function executeDeletion() {
             if (!urlToDelete) return;
             fetch(urlToDelete, {
                 method: 'POST',
-                headers: {'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest'}
-            }).then(res => {
-                if (res.ok) location.reload();
-            });
-        });
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(res => {
+                    if (res.ok) {
+                        location.reload();
+                    } else {
+                        alert("Ошибка при удалении объекта.");
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Сетевая ошибка при удалении объекта.");
+                });
+        }
+
+        // Обработчик подтверждения в модальном окне
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', executeDeletion);
+        }
     });
 </script>
 {% endblock %}

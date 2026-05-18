@@ -1,40 +1,58 @@
-<h4 class="fw-bold mb-4">Рейсы на {{ date|date:"d E Y" }}</h4>
+<div class="vstack gap-3">
+    {% for plan in today_plans %}
+    <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 1.25rem;">
+        <!-- Шапка машины -->
+        <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center"
+             style="background: #2d3436; color: white;">
+            <div class="d-flex align-items-center gap-2">
+                <span style="font-size: 1.2rem;">🚚</span>
+                <span class="fw-bold">{{ plan.vehicle.name }}</span>
+            </div>
+            <span class="badge bg-light text-dark rounded-pill">{{ plan.planitem_set.count }} зак.</span>
+        </div>
 
-{% for plan in today_plans %}
-<div class="card mb-4 border-0 shadow-sm overflow-hidden">
-    <div class="card-header bg-dark text-white py-3">
-        <h5 class="mb-0">🚚 {{ plan.vehicle.name }}</h5>
-    </div>
-    <div class="card-body p-0">
-        <div class="list-group list-group-flush">
+        <div class="card-body p-0">
             {% for item in plan.planitem_set.all %}
-            <div class="list-group-item p-3 d-flex justify-content-between align-items-center order-row {% if item.order.status == 'delivered' %}status-delivered{% elif item.order.status == 'canceled' %}status-canceled{% endif %}"
-                 id="order-{{ item.order.id }}">
-                <div>
-                    <div class="fw-bold">{{ item.order.address }}</div>
-                    <small class="text-muted">{{ item.order.weight }} кг | {{ item.order.volume }} м³</small>
-                </div>
-                <div class="btn-group">
-                    <button type="button"
-                            class="btn btn-sm btn-outline-success btn-status-update"
-                            data-id="{{ item.order.id }}"
-                            data-status="delivered">
-                        ✅ Доставлен
-                    </button>
-                    <button type="button"
-                            class="btn btn-sm btn-outline-danger btn-status-update"
-                            data-id="{{ item.order.id }}"
-                            data-status="canceled">
-                        ❌ Отмена
-                    </button>
+            <!-- Важно: id="order-{{ item.order.id }}" и класс status-{{ item.order.status }} -->
+            <div id="order-{{ item.order.id }}" class="p-3 border-bottom order-row status-{{ item.order.status }}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold text-dark mb-1">{{ item.order.address }}</div>
+                        <div class="text-muted small">
+                             📦 {{ item.order.volume }} м³ | ⚖️ {{ item.order.weight }} кг
+                        </div>
+
+                        <!-- Динамический бейдж статуса -->
+                        <div class="mt-2 status-badge-container">
+                            {% if item.order.status == 'shipped' %}
+                                <span class="badge bg-primary text-white">В пути</span>
+                            {% elif item.order.status == 'delivered' %}
+                                <span class="badge bg-success text-white">✓ Доставлен</span>
+                            {% elif item.order.status == 'canceled' %}
+                                <span class="badge bg-danger text-white">✕ Отменен</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Кнопки управления -->
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success btn-sm btn-status-update"
+                                data-id="{{ item.order.id }}" data-status="delivered">
+                            ✓
+                        </button>
+                        <button class="btn btn-danger btn-sm btn-status-update"
+                                data-id="{{ item.order.id }}" data-status="canceled">
+                            ✕
+                        </button>
+                    </div>
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
+    {% empty %}
+    <div class="text-center py-5 bg-white rounded-4 shadow-sm border">
+        <h5 class="text-muted">Нет активных рейсов на эту дату</h5>
+    </div>
+    {% endfor %}
 </div>
-{% empty %}
-<div class="text-center py-5">
-    <p class="text-muted">На выбранный день рейсов не запланировано.</p>
-</div>
-{% endfor %}

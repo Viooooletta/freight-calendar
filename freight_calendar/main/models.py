@@ -11,14 +11,39 @@ class Order(models.Model):
         DELIVERED = 'delivered', 'Доставлен'
         CANCELED = 'canceled', 'Отменен'
 
-    class Meta:
-        verbose_name = 'Заказ'
-        verbose_name_plural = 'Заказы'
+    # Новые перечисления
+    class DeliveryType(models.TextChoices):
+        URGENT = 'urgent', 'Срочно (в указанный день)'
+        PERIODIC = 'periodic', 'Периодическая'
+
+    class Frequency(models.TextChoices):
+        NONE = 'none', 'Разово'
+        WEEKLY = 'weekly', 'Каждую неделю'
+        BIWEEKLY = 'biweekly', 'Каждые 2 недели'
+        TRIWEEKLY = 'triweekly', 'Каждые 3 недели'
+        MONTHLY = 'monthly', 'Раз в месяц'
+        HALFYEARLY = 'half_yearly', 'Раз в полгода'
 
     address = models.CharField(max_length=255, verbose_name="Адрес доставки")
     volume = models.FloatField(verbose_name="Объем (м³)", default=0.0)
     weight = models.FloatField(verbose_name="Вес (кг)", default=0.0)
-    delivery_data = models.DateField(verbose_name="Дата доставки")
+
+    # Поля для новой логики
+    delivery_type = models.CharField(
+        max_length=10,
+        choices=DeliveryType.choices,
+        default=DeliveryType.URGENT,
+        verbose_name="Тип доставки"
+    )
+    frequency = models.CharField(
+        max_length=15,
+        choices=Frequency.choices,
+        default=Frequency.NONE,
+        verbose_name="Периодичность"
+    )
+
+    delivery_data = models.DateField(verbose_name="Дата доставки / Старт периода")
+
     status = models.CharField(
         max_length=10,
         choices=Status.choices,
@@ -26,10 +51,12 @@ class Order(models.Model):
         verbose_name="Статус заказа"
     )
 
-    def __str__(self):
-        # Отобразит, например: Заказ №21 — ул. Ленина, 10 (12.05.2026)
-        return f"Заказ №{self.id} — {self.address} ({self.delivery_data.strftime('%d.%m.%Y')})"
+    class Meta:
+        verbose_name = 'Заказ'
+        verbose_name_plural = 'Заказы'
 
+    def __str__(self):
+        return f"Заказ №{self.id} — {self.address}"
 
 class Vehicle(models.Model):
     class Meta:
@@ -41,8 +68,11 @@ class Vehicle(models.Model):
     capacity_weight = models.FloatField(verbose_name="Грузоподъемность по весу (кг)", default=0.0)
 
     def __str__(self):
-        # Отобразит, например: КАМАЗ АА 7777 (25.0 м³ | 10000.0 кг)
         return f"{self.name} ({self.capacity_volume} м³ | {self.capacity_weight} кг)"
+
+    def is_on_maintenance(self, date):
+        """Проверяет, находится ли машина в ремонте на указанную дату"""
+        return self.vehiclemaintenance_set.filter(start_date__lte=date, end_date__gte=date).exists()
 
 
 class DeliveryPlan(models.Model):
@@ -109,3 +139,9 @@ class CustomUser(AbstractUser):
         # Отобразит логин пользователя и его роль (чтобы сразу видеть, кто работает)
         role_display = dict(self.ROLE_CHOICES).get(self.role, self.role)
         return f"{self.username} — {role_display}"
+
+class VehicleMaintenance(models.Model):
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, verbose_name="Транспорт")
+    start_date = models.DateField(verbose_name="Дата начала ремонта/ТО")
+    end_date = models.DateField(verbose_name="Дата окончания")
+    reason = models.CharField(max_length=255, verbose_name="Причина", default="Техническое обслуживание")

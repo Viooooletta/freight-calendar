@@ -1,40 +1,42 @@
-<div class="modal-header border-0 pb-0 pt-4 px-4">
-    <h4 class="fw-bold mb-0" style="color: var(--brand-color);">План на {{ date }}</h4>
-    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- plan_day_modal.html -->
+<div class="modal-header border-0 p-4 pb-0">
+    <div>
+        <h4 class="fw-bold mb-0">Анализ мощностей: {{ date|date:"d E" }}</h4>
+        <small class="text-muted">Балансировка ресурсов дня</small>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 </div>
 
 <div class="modal-body p-4">
-    {% if plans %}
-        <div class="row">
-            {% for plan in plans %}
-            <div class="col-md-6 mb-3">
-                <div class="p-3 h-100 rounded-4" style="background: var(--brand-soft); border: 1px solid rgba(146, 68, 122, 0.1);">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0">🚚 {{ plan.vehicle.name }}</h6>
-                        <span class="badge rounded-pill {% if plan.status == 'draft' %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                            {{ plan.get_status_display }}
-                        </span>
-                    </div>
-                    <ul class="list-unstyled mb-0">
-                        {% for item in plan.planitem_set.all %}
-                        <li class="py-2 border-bottom border-white d-flex justify-content-between align-items-center small">
-                            <span class="text-dark">📍 {{ item.order.address }}</span>
-                            <span class="badge bg-white text-muted border">{{ item.order.weight }}кг</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
+    <!-- Сводка загрузки -->
+    <div class="row g-3 mb-4">
+        <div class="col-6">
+            <div class="p-3 rounded-4 {% if cur_w > avail_w %}bg-danger-subtle text-danger{% else %}bg-light{% endif %} border">
+                <small class="text-uppercase fw-bold d-block mb-1">По Весу</small>
+                <div class="h5 fw-bold mb-0">{{ cur_w|floatformat:0 }} / {{ avail_w|floatformat:0 }} кг</div>
             </div>
-            {% endfor %}
         </div>
-    {% else %}
-        <div class="text-center py-5">
-            <p class="text-muted">На этот день отгрузок пока не запланировано.</p>
+        <div class="col-6">
+            <div class="p-3 rounded-4 {% if cur_v > avail_v %}bg-danger-subtle text-danger{% else %}bg-light{% endif %} border">
+                <small class="text-uppercase fw-bold d-block mb-1">По Объему</small>
+                <div class="h5 fw-bold mb-0">{{ cur_v|floatformat:1 }} / {{ avail_v|floatformat:1 }} м³</div>
+            </div>
         </div>
-    {% endif %}
-</div>
+    </div>
 
-<div class="modal-footer border-0 pt-0 px-4 pb-4">
-    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Закрыть</button>
-    <a href="{% url 'planning_dashboard' %}" class="btn text-white rounded-3" style="background: var(--brand-color);">Добавить заказы</a>
+    <h6 class="fw-bold mb-3">📦 Перенос заказов для балансировки:</h6>
+    <div class="list-group list-group-flush rounded-4 border overflow-hidden">
+        {% for order in orders %}
+        <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+            <div style="max-width: 60%;">
+                <div class="fw-bold text-truncate">{{ order.address }}</div>
+                <small class="text-muted">{{ order.weight|floatformat:0 }} кг | {{ order.volume|floatformat:1 }} м³</small>
+            </div>
+            <div class="d-flex gap-2">
+                <input type="date" class="form-control form-control-sm reschedule-input" data-id="{{ order.id }}">
+                <button class="btn btn-sm btn-primary btn-reschedule" data-id="{{ order.id }}">OK</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </div>

@@ -2,6 +2,7 @@
 
 {% block extra_css %}
 <style>
+    
     .stats-card {
         background: white;
         border-radius: 1.5rem;
@@ -160,50 +161,39 @@
 </div>
 
 <div class="table-container">
+    <!-- В таблице logistics.html -->
     <table class="table align-middle" id="ordersTable">
         <thead>
         <tr class="text-muted small uppercase">
             <th width="60">ID</th>
             <th>Адрес</th>
             <th width="180">Объем / Вес</th>
-            <th width="150">Дата</th>
+            <th width="160">Период</th> <!-- ИЗМЕНЕНО: Одно слово -->
             <th width="150">Статус</th>
-            <th class="text-end" width="100">Действия</th>
         </tr>
         </thead>
         <tbody>
         {% for order in orders %}
         <tr id="row-{{ order.id }}">
-            <td><span class="view-mode">#{{ order.id }}</span></td>
+            <td>#{{ order.id }}</td>
+            <td><span class="fw-bold">{{ order.address }}</span></td>
             <td>
-                <span class="view-mode fw-bold">{{ order.address }}</span>
-                <input type="text" id="addr-{{ order.id }}" class="form-control-edit edit-mode"
-                       value="{{ order.address }}" required>
+                <span class="badge bg-light text-dark">{{ order.volume }} м³</span>
+                <span class="badge bg-light text-dark">{{ order.weight }} кг</span>
             </td>
             <td>
-                <div class="view-mode">
-                    <span class="badge bg-light text-dark">{{ order.volume }} м³</span>
-                    <span class="badge bg-light text-dark">{{ order.weight }} кг</span>
-                </div>
-                <div class="edit-mode">
-                    <input type="number" step="0.1" id="vol-{{ order.id }}" class="form-control-edit"
-                           style="width: 70px;" value='{{ order.volume|stringformat:".1f" }}' required>
-                    <input type="number" step="0.1" id="wei-{{ order.id }}" class="form-control-edit"
-                           style="width: 70px;" value='{{ order.weight|stringformat:".1f" }}' required>
-                </div>
+                {% if order.delivery_type == 'urgent' %}
+                <span class="text-danger small fw-bold">🔥 Срочно</span><br>
+                <small>{{ order.delivery_data|date:"d.m.Y" }}</small>
+                {% else %}
+                <span class="text-primary small fw-bold">🔄 {{ order.get_frequency_display }}</span><br>
+                <small>С {{ order.delivery_data|date:"d.m" }}</small>
+                {% endif %}
             </td>
             <td>
-                <span class="view-mode">{{ order.delivery_data|date:"d.m.Y" }}</span>
-                <input type="date" id="date-{{ order.id }}" class="form-control-edit edit-mode"
-                       value="{{ order.delivery_data|date:'Y-m-d' }}" required>
+                <span class="status-badge bg-{{ order.status }}">{{ order.get_status_display }}</span>
             </td>
-            <td>
-                <span class="view-mode status-badge bg-{{ order.status }}">{{ order.get_status_display }}</span>
-                <select id="stat-{{ order.id }}" class="form-control-edit edit-mode">
-                    <option value="pending">Ожидает</option>
-                    <option value="canceled">Отменить</option>
-                </select>
-            </td>
+            <td class="text-end">
             <td class="text-end">
                 <div class="view-mode">
                     <button onclick="toggleEdit('{{ order.id }}')" class="btn btn-sm btn-outline-primary">✏️</button>
@@ -212,6 +202,7 @@
                 <div class="edit-mode">
                     <button onclick="saveInline('{{ order.id }}')" class="btn btn-sm btn-success">✅</button>
                 </div>
+            </td>
             </td>
         </tr>
         {% endfor %}
