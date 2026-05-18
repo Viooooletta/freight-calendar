@@ -2,7 +2,6 @@
 
 {% block extra_css %}
 <style>
-    
     .stats-card {
         background: white;
         border-radius: 1.5rem;
@@ -17,14 +16,12 @@
         transform: translateY(-3px);
     }
 
-    /* Наклейка "Всего" с круглыми углами */
     .total-card {
         background: var(--brand-color);
         color: white;
         border-radius: 3rem;
     }
 
-    /* Таблица */
     .table-container {
         background: white;
         border-radius: 1.5rem;
@@ -32,33 +29,61 @@
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
     }
 
-    /* Редактирование: теперь все горизонтально */
+    /* Логика переключения режимов */
     .edit-mode {
-        display: none;
+        display: none !important;
     }
 
     .editing .view-mode {
-        display: none;
+        display: none !important;
     }
 
     .editing .edit-mode {
-        display: inline-flex;
-        width: 100%;
-        gap: 5px;
+        display: inline-block !important;
     }
 
-    .form-control-edit {
+    /* Стили для инпутов внутри таблицы */
+    .form-control-sm-custom {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
         border-radius: 0.5rem;
         border: 1px solid #ddd;
-        padding: 0.3rem 0.5rem;
-        font-size: 0.85rem;
+        width: 100%;
     }
 
     .error-border {
         border: 2px solid #ff4d4d !important;
     }
 
-    /* Кастомная модалка */
+    /* Статусы (цвета) */
+    .status-badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+
+    .bg-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .bg-planned {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .bg-shipped {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .bg-delivered {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    /* Модалка удаления */
     #deleteModal {
         display: none;
         position: fixed;
@@ -71,6 +96,7 @@
         box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
         z-index: 2000;
         text-align: center;
+        width: 350px;
     }
 
     #modalOverlay {
@@ -96,24 +122,18 @@
         align-items: center;
         gap: 10px;
         border: none;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 8px 20px rgba(146, 68, 122, 0.2);
+        transition: all 0.3s ease;
     }
 
     .btn-action:hover {
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 12px 25px rgba(146, 68, 122, 0.3);
-        background: linear-gradient(135deg, #a34e89, var(--brand-color));
+        transform: translateY(-2px);
+        opacity: 0.9;
     }
-
-    .btn-action:active {
-        transform: translateY(0);
-    }
-
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Модалки -->
 <div id="modalOverlay" onclick="closeDeleteModal()"></div>
 <div id="deleteModal">
     <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
@@ -125,14 +145,19 @@
     </div>
 </div>
 
-<div class="d-flex justify-content-between align-items-center" style="margin-top: 4.5rem; margin-bottom: 2.5rem;">
+<!-- Заголовок -->
     <div>
-        <h1 class="fw-bold">Управление заказами</h1>
+        <div>
+            <span class="badge mb-2"
+                  style="background: var(--brand-light); color: var(--brand-color); font-weight: 700;">ORDERS DEPT</span>
+            <h1 class="display-6 fw-bold mb-0">Управление заказами</h1>
+        </div>
         <p class="text-muted">Логист: {{ user.username }}</p>
     </div>
     <a href="{% url 'order_create' %}" class="btn-action shadow-sm">+ Создать заказ</a>
 </div>
 
+<!-- Статистика -->
 <div class="row g-3 mb-5">
     <div class="col-md-2">
         <div class="stats-card text-center"><small class="text-muted fw-bold">ОЖИДАЮТ</small>
@@ -160,49 +185,76 @@
     </div>
 </div>
 
+<!-- Таблица -->
 <div class="table-container">
-    <!-- В таблице logistics.html -->
     <table class="table align-middle" id="ordersTable">
         <thead>
         <tr class="text-muted small uppercase">
             <th width="60">ID</th>
             <th>Адрес</th>
             <th width="180">Объем / Вес</th>
-            <th width="160">Период</th> <!-- ИЗМЕНЕНО: Одно слово -->
+            <th width="160">Период</th>
             <th width="150">Статус</th>
+            <th width="120" class="text-end">Действия</th>
         </tr>
         </thead>
         <tbody>
         {% for order in orders %}
         <tr id="row-{{ order.id }}">
             <td>#{{ order.id }}</td>
-            <td><span class="fw-bold">{{ order.address }}</span></td>
+
             <td>
-                <span class="badge bg-light text-dark">{{ order.volume }} м³</span>
-                <span class="badge bg-light text-dark">{{ order.weight }} кг</span>
+                <span class="view-mode fw-bold">{{ order.address }}</span>
+                <input type="text" id="addr-{{ order.id }}" class="edit-mode form-control-sm-custom"
+                       value="{{ order.address }}">
             </td>
+
             <td>
-                {% if order.delivery_type == 'urgent' %}
-                <span class="text-danger small fw-bold">🔥 Срочно</span><br>
-                <small>{{ order.delivery_data|date:"d.m.Y" }}</small>
-                {% else %}
-                <span class="text-primary small fw-bold">🔄 {{ order.get_frequency_display }}</span><br>
-                <small>С {{ order.delivery_data|date:"d.m" }}</small>
-                {% endif %}
+                <div class="view-mode">
+                    <span class="badge bg-light text-dark">{{ order.volume }} м³</span>
+                    <span class="badge bg-light text-dark">{{ order.weight }} кг</span>
+                </div>
+                <div class="edit-mode d-flex gap-1">
+                    <input type="number" step="0.1" id="vol-{{ order.id }}" class="form-control-sm-custom"
+                           value="{{ order.volume|stringformat:'.1f' }}" style="width: 70px;">
+                    <input type="number" step="0.1" id="wei-{{ order.id }}" class="form-control-sm-custom"
+                           value="{{ order.weight|stringformat:'.1f' }}" style="width: 70px;">
+                </div>
             </td>
+
             <td>
-                <span class="status-badge bg-{{ order.status }}">{{ order.get_status_display }}</span>
+                <div class="view-mode">
+                    {% if order.delivery_type == 'urgent' %}
+                    <span class="text-danger small fw-bold">🔥 Срочно</span><br>
+                    <small>{{ order.delivery_data|date:"d.m.Y" }}</small>
+                    {% else %}
+                    <span class="text-primary small fw-bold">🔄 {{ order.get_frequency_display }}</span><br>
+                    <small>С {{ order.delivery_data|date:"d.m" }}</small>
+                    {% endif %}
+                </div>
+                <input type="date" id="date-{{ order.id }}" class="edit-mode form-control-sm-custom"
+                       value="{{ order.delivery_data|date:'Y-m-d' }}">
             </td>
-            <td class="text-end">
+
+            <td>
+                <span class="view-mode status-badge bg-{{ order.status }}">{{ order.get_status_display }}</span>
+                <select id="stat-{{ order.id }}" class="edit-mode form-control-sm-custom">
+                    <!-- Только текущий статус и Отмена -->
+                    <option value="{{ order.status }}" selected>{{ order.get_status_display }}</option>
+                    {% if order.status != 'canceled' %}
+                    <option value="canceled">Отменен</option>
+                    {% endif %}
+                </select>
+            </td>
+
             <td class="text-end">
                 <div class="view-mode">
                     <button onclick="toggleEdit('{{ order.id }}')" class="btn btn-sm btn-outline-primary">✏️</button>
                     <button onclick="confirmDelete('{{ order.id }}')" class="btn btn-sm btn-outline-danger">🗑️</button>
                 </div>
-                <div class="edit-mode">
+                <div class="edit-mode d-flex gap-1 justify-content-end">
                     <button onclick="saveInline('{{ order.id }}')" class="btn btn-sm btn-success">✅</button>
                 </div>
-            </td>
             </td>
         </tr>
         {% endfor %}
@@ -211,37 +263,53 @@
 </div>
 
 <script>
+    // Переключение строки в режим редактирования
     function toggleEdit(id) {
         document.getElementById(`row-${id}`).classList.toggle('editing');
     }
 
+    // Сохранение изменений через API
     async function saveInline(id) {
         const data = {
             address: document.getElementById(`addr-${id}`).value,
             volume: document.getElementById(`vol-${id}`).value,
             weight: document.getElementById(`wei-${id}`).value,
             delivery_data: document.getElementById(`date-${id}`).value,
-            status: document.getElementById(`stat-${id}`).value, // Проверь эту строку
+            status: document.getElementById(`stat-${id}`).value
         };
 
-        // Валидация
+        // Простейшая валидация на стороне клиента
         if (!data.address || !data.volume || !data.weight || !data.delivery_data) {
-            document.querySelectorAll(`#row-${id} input[required]`).forEach(i => {
-                if (!i.value) i.classList.add('error-border');
-                else i.classList.remove('error-border');
-            });
+            alert("Пожалуйста, заполните все поля");
             return;
         }
 
-        const response = await fetch(`/logistics/management/orders/${id}/update-inline/`, {
-            method: 'POST',
-            headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
+        try {
+            const response = await fetch(`/logistics/management/orders/${id}/update-inline/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
 
-        if (response.ok) location.reload();
+            const result = await response.json();
+
+            if (response.ok && result.status === 'success') {
+                // Вместо простого reload() можно обновить текст в ячейках через JS,
+                // но reload гарантирует правильное форматирование дат и бейджей от Django.
+                location.reload();
+            } else {
+                alert("Ошибка при сохранении: " + (result.message || "Неизвестная ошибка"));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Сетевая ошибка");
+        }
     }
 
+    // Удаление
     function confirmDelete(id) {
         document.getElementById('modalText').innerText = `Заказ ID #${id} будет удален из базы навсегда.`;
         document.getElementById('confirmDeleteBtn').onclick = () => performDelete(id);
@@ -255,11 +323,19 @@
     }
 
     async function performDelete(id) {
-        const response = await fetch(`/logistics/management/orders/${id}/delete/`, {
-            method: 'POST',
-            headers: {'X-CSRFToken': '{{ csrf_token }}'}
-        });
-        if (response.ok) location.reload();
+        try {
+            const response = await fetch(`/logistics/management/orders/${id}/delete/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'}
+            });
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert("Не удалось удалить заказ.");
+            }
+        } catch (e) {
+            alert("Ошибка соединения.");
+        }
     }
 </script>
 {% endblock %}

@@ -22,6 +22,12 @@ from .models import VehicleMaintenance
 import datetime as dt
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.db.models import Sum, Max
+from django.utils import timezone
+from datetime import timedelta
+from .models import Order, Vehicle, VehicleMaintenance
 
 
 # Главная
@@ -150,33 +156,226 @@ def planning_dashboard(request):
 
 
 # Формирование плана
+from dateutil.relativedelta import relativedelta
+
+
+def get_next_dates(start_date, frequency, horizon_months=2):
+    """Генерирует список дат для периодических заказов согласно интервалу"""
+    dates = [start_date]
+    curr = start_date
+    end_date = start_date + relativedelta(months=horizon_months)
+
+    delta = {
+        Order.Frequency.WEEKLY: relativedelta(weeks=1),
+        Order.Frequency.BIWEEKLY: relativedelta(weeks=2),
+        Order.Frequency.TRIWEEKLY: relativedelta(weeks=3),
+        Order.Frequency.MONTHLY: relativedelta(months=1),
+        Order.Frequency.HALFYEARLY: relativedelta(months=6),
+    }.get(frequency)
+
+    if delta:
+        while True:
+            curr += delta
+            if curr > end_date: break
+            dates.append(curr)
+    return dates
+
+
+@transaction.atomic
 def generate_plan_view(request):
+    """Стандартная кнопка 'Сформировать план' теперь тоже использует общую функцию"""
     if request.method == 'POST':
         order_ids = request.POST.getlist('order_ids')
-        # Если нажата кнопка "на неделю" и список пуст, берем все PENDING заказы на 7 дней вперед
         if not order_ids:
-            today = timezone.now().date()
-            next_week = today + dt.timedelta(days=7)
-            orders = Order.objects.filter(
-                status=Order.Status.PENDING,
-                delivery_data__range=[today, next_week]
-            ).order_by('delivery_data', '-weight')
+            return redirect('planning_dashboard')
+
+        selected_orders = Order.objects.filter(id__in=order_ids)
+        target_dates = set()
+
+        # Обработка периодичности (создаем копии на будущее)
+        for original_order in selected_orders:
+            if original_order.delivery_type == Order.DeliveryType.PERIODIC:
+                future_dates = get_next_dates(original_order.delivery_data, original_order.frequency)
+                for i, date in enumerate(future_dates):
+                    target_dates.add(date)
+                    if i > 0:
+                        Order.objects.get_or_create(
+                            address=original_order.address,
+                            volume=original_order.volume,
+                            weight=original_order.weight,
+                            delivery_type=Order.DeliveryType.URGENT,
+                            delivery_data=date,
+                            defaults={'status': Order.Status.PENDING}
+                        )
+            else:
+                target_dates.add(original_order.delivery_data)
+
+        # Запускаем наше автоматическое планирование
+        auto_plan_for_dates(list(target_dates))
+
+        return redirect('planning_dashboard')
+    return redirect('planning_dashboard')
+
+
+def calendar_events_api(request):
+    """API для календаря: считает баланс и красит дни"""
+    start_str = request.GET.get('start', '').split('T')[0]
+    end_str = request.GET.get('end', '').split('T')[0]
+
+    if not (start_str and end_str):
+        return JsonResponse([], safe=False)
+
+    start_date = dt.datetime.strptime(start_str, '%Y-%m-%d').date()
+    end_date = dt.datetime.strptime(end_str, '%Y-%m-%d').date()
+
+    fleet = Vehicle.objects.aggregate(tw=Sum('capacity_weight'), tv=Sum('capacity_volume'))
+    total_w = fleet['tw'] or 0
+    total_v = fleet['tv'] or 0
+
+    events = []
+    curr = start_date
+    while curr < end_date:
+        # 1. Доступные ресурсы (минус ремонт)
+        maint = VehicleMaintenance.objects.filter(
+            start_date__lte=curr, end_date__gte=curr
+        ).aggregate(lw=Sum('vehicle__capacity_weight'), lv=Sum('vehicle__capacity_volume'))
+
+        avail_w = total_w - (maint['lw'] or 0)
+        avail_v = total_v - (maint['lv'] or 0)
+
+        # 2. Статистика заказов на день
+        day_orders = Order.objects.filter(delivery_data=curr).exclude(status=Order.Status.CANCELED)
+        orders_stats = day_orders.aggregate(cw=Sum('weight'), cv=Sum('volume'))
+
+        cur_w = orders_stats['cw'] or 0
+        cur_v = orders_stats['cv'] or 0
+
+        # 3. ГЛАВНОЕ: Проверяем, есть ли нераспределенные заказы
+        # Если заказ остался PENDING — значит он не влез ни в одну машину
+        has_pending = day_orders.filter(status=Order.Status.PENDING).exists()
+
+        # 4. Логика цвета
+        # День красный, если: общий перегруз ИЛИ есть хоть один нераспределенный заказ
+        is_overloaded = (cur_w > avail_w) or (cur_v > avail_v) or has_pending
+
+        if is_overloaded:
+            title = "⚠ Требуется перепланирование"
+            bg_color = '#dc3545'  # Красный (danger)
+            detail = f"Дефицит ресурсов или заказы не влезли в авто.\nЗаказы: {int(cur_w)}/{int(avail_w)} кг"
         else:
-            orders = Order.objects.filter(id__in=order_ids).order_by('delivery_data', '-weight')
+            # Показываем плашку только если есть хотя бы один запланированный заказ
+            if day_orders.exists():
+                title = "✅ Ресурсы в норме"
+                bg_color = '#198754'  # Зеленый (success)
+                detail = f"Все заказы распределены.\nЗагрузка: {int(cur_w)}/{int(avail_w)} кг"
+            else:
+                # Если заказов нет вообще, можно не выводить событие или сделать его серым
+                curr += dt.timedelta(days=1)
+                continue
 
-        with transaction.atomic():
-            for order in orders:
-                # 1. Ищем существующий черновик плана на эту дату и этот груз
-                # (Логика вашего старого распределения по машинам)
-                # ... ваш существующий код поиска available_vehicle ...
+        events.append({
+            'title': title,
+            'start': curr.isoformat(),
+            'backgroundColor': bg_color,
+            'borderColor': bg_color,
+            'allDay': True,
+            'extendedProps': {
+                'detail_text': detail
+            }
+        })
+        curr += dt.timedelta(days=1)
 
-                # В конце цикла обязательно:
-                order.status = Order.Status.PLANNED
-                order.save()
-
-        return redirect('transport_schedule')
+    return JsonResponse(events, safe=False)
 
 
+def suggest_optimal_date_api(request, pk):
+    """API интеллектуального поиска даты"""
+    try:
+        order = get_object_or_404(Order, pk=pk)
+
+        # Предварительная проверка: есть ли в парке машина, способная это поднять в принципе
+        limits = Vehicle.objects.aggregate(mw=Max('capacity_weight'), mv=Max('capacity_volume'))
+        if order.weight > (limits['mw'] or 0) or order.volume > (limits['mv'] or 0):
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Заказ слишком велик для нашего парка (Макс. авто: {limits["mw"]}кг)'
+            }, status=400)
+
+        # Начинаем поиск со следующего дня
+        start_date = order.delivery_data
+
+        # Ищем на 60 дней вперед
+        for i in range(1, 61):
+            test_date = start_date + timedelta(days=i)
+
+            # Если день подходит по всем параметрам
+            if check_order_fits_day(order, test_date):
+                return JsonResponse({
+                    'status': 'success',
+                    'optimal_date': test_date.isoformat(),
+                    'message': f'Найдено свободное окно на {test_date.strftime("%d.%m.%Y")}'
+                })
+
+        return JsonResponse({'status': 'error', 'message': 'На ближайшие 2 месяца свободных мест нет.'}, status=404)
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+def auto_plan_for_dates(dates_list):
+    """
+    Универсальная функция, которая перепланирует черновики для списка дат.
+    Вызывается и при нажатии кнопки 'Сформировать', и автоматически при переносе.
+    """
+    with transaction.atomic():
+        # Очищаем старые черновики на эти даты
+        # Мы удаляем черновики, чтобы алгоритм перераспределил машины с нуля максимально эффективно
+        DeliveryPlan.objects.filter(date__in=dates_list, status=DeliveryPlan.Status.DRAFT).delete()
+
+        # Сбрасываем заказы, которые были в этих черновиках, обратно в "Ожидает"
+        Order.objects.filter(delivery_data__in=dates_list, status=Order.Status.PLANNED).update(
+            status=Order.Status.PENDING)
+
+        # Проходим по каждой дате и запускаем алгоритм Best Fit
+        for target_date in sorted(list(dates_list)):
+            # Берем все заказы на день (кроме отмененных и уже утвержденных в рейсах)
+            day_orders = Order.objects.filter(
+                delivery_data=target_date,
+                status=Order.Status.PENDING
+            ).order_by('-weight', '-volume')
+
+            # Состояние машин на эту дату (не в ремонте)
+            vehicles_pool = []
+            for v in Vehicle.objects.all().order_by('-capacity_weight'):
+                if not v.is_on_maintenance(target_date):
+                    vehicles_pool.append({
+                        'obj': v,
+                        'rem_w': v.capacity_weight,
+                        'rem_v': v.capacity_volume,
+                        'plan': None
+                    })
+
+            # Пытаемся разложить каждый заказ по машинам
+            for order in day_orders:
+                for v_data in vehicles_pool:
+                    if v_data['rem_w'] >= order.weight and v_data['rem_v'] >= order.volume:
+                        # Если для этой машины еще нет черновика на сегодня — создаем
+                        if not v_data['plan']:
+                            v_data['plan'] = DeliveryPlan.objects.create(
+                                date=target_date,
+                                vehicle=v_data['obj'],
+                                status=DeliveryPlan.Status.DRAFT
+                            )
+                        # Добавляем заказ в машину
+                        PlanItem.objects.create(plan=v_data['plan'], order=order)
+                        v_data['rem_w'] -= order.weight
+                        v_data['rem_v'] -= order.volume
+                        order.status = Order.Status.PLANNED
+                        order.save()
+                        break
+
+
+# --- 2. ОБНОВЛЯЕМ ОБРАБОТЧИК ПЕРЕНОСА (РАКЕТА) ---
 def transport_maintenance_view(request):
     vehicles = Vehicle.objects.all().order_by('name')
     total_perfect_weight = Vehicle.objects.aggregate(total=Sum('capacity_weight'))['total'] or 0
@@ -327,6 +526,7 @@ def add_maintenance_ajax(request):
 
     return JsonResponse({'status': 'error', 'message': 'Недопустимый тип запроса.'}, status=400)
 
+
 # Пересмотр плана
 def review_drafts_view(request):
     # Берем только черновики
@@ -353,74 +553,7 @@ def approve_all_drafts_view(request):
         return redirect('logistics_dashboard')
     return redirect('review_drafts')
 
-# Календарь плана на месяц
-def calendar_events_api(request):
-    start_str = request.GET.get('start', '').split('T')[0]
-    end_str = request.GET.get('end', '').split('T')[0]
 
-    if not start_str or not end_str:
-        return JsonResponse([], safe=False)
-
-    start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
-    end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
-
-    # 1. Считаем общую идеальную мощность всего парка
-    fleet_stats = Vehicle.objects.aggregate(
-        total_w=Sum('capacity_weight'),
-        total_v=Sum('capacity_volume')
-    )
-    total_w = fleet_stats['total_w'] or 0
-    total_v = fleet_stats['total_v'] or 0
-
-    events = []
-    curr = start_date
-    while curr < end_date:
-        # 2. Считаем потери из-за СТО на этот день
-        maint_stats = VehicleMaintenance.objects.filter(
-            start_date__lte=curr, end_date__gte=curr
-        ).aggregate(
-            lost_w=Sum('vehicle__capacity_weight'),
-            lost_v=Sum('vehicle__capacity_volume')
-        )
-
-        # Доступно = Всего - СТО
-        avail_w = total_w - (maint_stats['lost_w'] or 0)
-        avail_v = total_v - (maint_stats['lost_v'] or 0)
-
-        # 3. Считаем сумму заказов на этот день
-        order_stats = Order.objects.filter(
-            delivery_data=curr
-        ).exclude(status=Order.Status.CANCELED).aggregate(
-            cur_w=Sum('weight'),
-            cur_v=Sum('volume')
-        )
-        cur_w = order_stats['cur_w'] or 0
-        cur_v = order_stats['cur_v'] or 0
-
-        # 4. ЛОГИКА ПРОВЕРКИ (Перегруз по весу ИЛИ по объему)
-        is_overloaded = (cur_w > avail_w) or (cur_v > avail_v)
-
-        if is_overloaded:
-            title = "⚠ Дефицит ресурсов"
-            bg_color = '#dc3545'  # Красный
-        else:
-            title = "✅ Ресурсы в норме"
-            bg_color = '#198754'  # Зеленый
-
-        events.append({
-            'title': title,
-            'start': curr.isoformat(),
-            'backgroundColor': bg_color,
-            'borderColor': bg_color,
-            'allDay': True,
-            'extendedProps': {
-                'is_overloaded': is_overloaded,
-                'detail_text': f"Вес: {int(cur_w)}/{int(avail_w)} кг\nОбъем: {round(cur_v, 1)}/{round(avail_v, 1)} м³"
-            }
-        })
-        curr += dt.timedelta(days=1)
-
-    return JsonResponse(events, safe=False)
 # План на день
 def plan_detail_api(request, date_str):
     selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -520,19 +653,35 @@ def vehicle_update_inline(request, pk):
 
 
 @require_POST
+@require_POST
 def update_order_date_ajax(request, pk):
+    """Обновляет дату заказа и СРАЗУ запускает перепланирование"""
     try:
         data = json.loads(request.body)
-        new_date = data.get('new_date')
+        new_date_str = data.get('new_date')
+        new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+
         order = get_object_or_404(Order, pk=pk)
+        old_date = order.delivery_data  # Запоминаем старую дату
+
+        # 1. Обновляем данные заказа
         order.delivery_data = new_date
-        # Если заказ был в плане, удаляем его из плана при переносе даты, чтобы перепланировать
+        # Удаляем из любых существующих планов
         PlanItem.objects.filter(order=order).delete()
         order.status = Order.Status.PENDING
         order.save()
+
+        # 2. АВТОМАТИЧЕСКИ запускаем перепланирование для двух дат
+        # Это нужно, чтобы на старой дате уплотнить заказы, а на новой - впихнуть этот
+        auto_plan_for_dates([old_date, new_date])
+
         return JsonResponse({'status': 'success'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+# --- 3. ОБНОВЛЯЕМ ГЛАВНУЮ КНОПКУ "СФОРМИРОВАТЬ ПЛАН" ---
+
 
 # Удаление транспорта
 @require_POST
@@ -543,6 +692,52 @@ def vehicle_delete(request, pk):
     vehicle = get_object_or_404(Vehicle, pk=pk)
     vehicle.delete()
     return JsonResponse({'status': 'success'})
+
+
+def check_order_fits_day(order, target_date):
+    """
+    Улучшенная проверка: влезет ли заказ на конкретную дату с учетом
+    всех существующих заказов (и ожидающих, и запланированных).
+    """
+    # 1. Считаем суммарный СПРОС на этот день (все заказы: и Pending, и Planned)
+    # Мы исключаем текущий заказ из расчета, чтобы не считать его дважды
+    day_stats = Order.objects.filter(
+        delivery_data=target_date
+    ).exclude(
+        status=Order.Status.CANCELED
+    ).exclude(
+        id=order.id  # Важно: не считаем самого себя
+    ).aggregate(sw=Sum('weight'), sv=Sum('volume'))
+
+    current_demand_w = day_stats['sw'] or 0
+    current_demand_v = day_stats['sv'] or 0
+
+    # 2. Считаем РЕСУРСЫ парка на этот день (все авто минус те, что в ремонте)
+    fleet_stats = Vehicle.objects.exclude(
+        vehiclemaintenance__start_date__lte=target_date,
+        vehiclemaintenance__end_date__gte=target_date
+    ).aggregate(tw=Sum('capacity_weight'), tv=Sum('capacity_volume'))
+
+    total_fleet_w = fleet_stats['tw'] or 0
+    total_fleet_v = fleet_stats['tv'] or 0
+
+    # 3. ПРОВЕРКА 1: Есть ли вообще свободное место в общем объеме парка?
+    if (total_fleet_w - current_demand_w) < order.weight:
+        return False
+    if (total_fleet_v - current_demand_v) < order.volume:
+        return False
+
+    # 4. ПРОВЕРКА 2: Есть ли в этот день хотя бы одна подходящая по габаритам машина,
+    # которая физически сможет поднять этот вес (даже если она будет пустая)
+    suitable_vehicle_exists = Vehicle.objects.exclude(
+        vehiclemaintenance__start_date__lte=target_date,
+        vehiclemaintenance__end_date__gte=target_date
+    ).filter(
+        capacity_weight__gte=order.weight,
+        capacity_volume__gte=order.volume
+    ).exists()
+
+    return suitable_vehicle_exists
 
 
 # Страница графика рейсов
@@ -561,6 +756,7 @@ def transport_schedule_view(request):
         'today_plans': today_plans,
         'today': today
     })
+
 
 #
 def transport_schedule_api(request, date_str):
@@ -583,6 +779,7 @@ def transport_schedule_api(request, date_str):
         return JsonResponse({'html': html_content})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
 
 # API для смены статуса заказа
 def update_order_status_ajax(request, pk):
@@ -641,3 +838,86 @@ def vehicle_maintenance_detail_view(request, vehicle_id):
         'today': timezone.now().date().isoformat()
     }
     return render(request, 'main/vehicle_maintenance_detail.html', context)
+
+
+@transaction.atomic
+@require_POST
+def approve_plans_by_date_api(request, date_str):
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        # Ищем все черновики на эту дату
+        draft_plans = DeliveryPlan.objects.filter(date=target_date, status=DeliveryPlan.Status.DRAFT)
+
+        if not draft_plans.exists():
+            return JsonResponse({'status': 'error', 'message': 'Нет черновиков на эту дату'}, status=404)
+
+        for plan in draft_plans:
+            plan.status = DeliveryPlan.Status.APPROVED
+            plan.save()
+            # Обновляем статус заказов в этом плане
+            Order.objects.filter(planitem__plan=plan).update(status=Order.Status.SHIPPED)
+
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+# 2. Обновим plan_detail_api (уже есть у вас, убедитесь, что передаете нужные данные в шаблон)
+def plan_detail_api(request, date_str):
+    selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+    # Статистика ресурсов
+    fleet = Vehicle.objects.aggregate(tw=Sum('capacity_weight'), tv=Sum('capacity_volume'))
+    lost = VehicleMaintenance.objects.filter(start_date__lte=selected_date, end_date__gte=selected_date).aggregate(
+        lw=Sum('vehicle__capacity_weight'), lv=Sum('vehicle__capacity_volume'))
+
+    avail_w = (fleet['tw'] or 0) - (lost['lw'] or 0)
+    avail_v = (fleet['tv'] or 0) - (lost['lv'] or 0)
+
+    # Заказы на этот день
+    orders = Order.objects.filter(delivery_data=selected_date).order_by('status')
+
+    # Проверка: есть ли черновики для утверждения?
+    has_drafts = DeliveryPlan.objects.filter(date=selected_date, status=DeliveryPlan.Status.DRAFT).exists()
+
+    html = render_to_string('main/plan_day_modal.html', {
+        'orders': orders,
+        'date': selected_date,
+        'date_str': date_str,
+        'avail_w': avail_w,
+        'avail_v': avail_v,
+        'has_drafts': has_drafts,
+    })
+    return JsonResponse({'html': html})
+
+def transport_calendar_events_api(request):
+    """API специально для страницы графика рейсов: только отметки о наличии планов"""
+    start_str = request.GET.get('start', '').split('T')[0]
+    end_str = request.GET.get('end', '').split('T')[0]
+
+    if not (start_str and end_str):
+        return JsonResponse([], safe=False)
+
+    start_date = dt.datetime.strptime(start_str, '%Y-%m-%d').date()
+    end_date = dt.datetime.strptime(end_str, '%Y-%m-%d').date()
+
+    # Ищем даты, на которые есть утвержденные планы
+    active_dates = DeliveryPlan.objects.filter(
+        date__range=[start_date, end_date],
+        status=DeliveryPlan.Status.APPROVED
+    ).values_list('date', flat=True).distinct()
+
+    events = []
+    for date in active_dates:
+        events.append({
+            'title': '📌',  # Наш стикер кнопки
+            'start': date.isoformat(),
+            'allDay': True,
+            'display': 'block',
+            'backgroundColor': 'transparent', # Прозрачный фон
+            'borderColor': 'transparent',     # Без границ
+            'textColor': '#000',             # Цвет иконки
+            'classNames': ['pin-event']       # Специальный класс для CSS
+        })
+
+    return JsonResponse(events, safe=False)

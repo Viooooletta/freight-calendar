@@ -1,42 +1,70 @@
-<!-- plan_day_modal.html -->
-<div class="modal-header border-0 p-4 pb-0">
-    <div>
-        <h4 class="fw-bold mb-0">Анализ мощностей: {{ date|date:"d E" }}</h4>
-        <small class="text-muted">Балансировка ресурсов дня</small>
-    </div>
+<div class="modal-header">
+    <h5 class="modal-title fw-bold">Детали на {{ date|date:"d.m.Y" }}</h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 </div>
-
-<div class="modal-body p-4">
-    <!-- Сводка загрузки -->
-    <div class="row g-3 mb-4">
-        <div class="col-6">
-            <div class="p-3 rounded-4 {% if cur_w > avail_w %}bg-danger-subtle text-danger{% else %}bg-light{% endif %} border">
-                <small class="text-uppercase fw-bold d-block mb-1">По Весу</small>
-                <div class="h5 fw-bold mb-0">{{ cur_w|floatformat:0 }} / {{ avail_w|floatformat:0 }} кг</div>
-            </div>
-        </div>
-        <div class="col-6">
-            <div class="p-3 rounded-4 {% if cur_v > avail_v %}bg-danger-subtle text-danger{% else %}bg-light{% endif %} border">
-                <small class="text-uppercase fw-bold d-block mb-1">По Объему</small>
-                <div class="h5 fw-bold mb-0">{{ cur_v|floatformat:1 }} / {{ avail_v|floatformat:1 }} м³</div>
-            </div>
-        </div>
+<div class="modal-body">
+    <div class="alert alert-info py-2" style="background: rgba(13, 202, 240, 0.1); border: none; border-radius: 12px;">
+        <span class="small">Доступно ресурсов парка:</span>
+        <strong>{{ avail_w|floatformat:0 }} кг / {{ avail_v|floatformat:1 }} м³</strong>
     </div>
 
-    <h6 class="fw-bold mb-3">📦 Перенос заказов для балансировки:</h6>
-    <div class="list-group list-group-flush rounded-4 border overflow-hidden">
-        {% for order in orders %}
-        <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-            <div style="max-width: 60%;">
-                <div class="fw-bold text-truncate">{{ order.address }}</div>
-                <small class="text-muted">{{ order.weight|floatformat:0 }} кг | {{ order.volume|floatformat:1 }} м³</small>
-            </div>
-            <div class="d-flex gap-2">
-                <input type="date" class="form-control form-control-sm reschedule-input" data-id="{{ order.id }}">
-                <button class="btn btn-sm btn-primary btn-reschedule" data-id="{{ order.id }}">OK</button>
-            </div>
-        </div>
-        {% endfor %}
+    <h6 class="fw-bold mt-4 mb-3">Список заказов:</h6>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead class="text-muted small">
+                <tr>
+                    <th>Адрес</th>
+                    <th>Вес/Объем</th>
+                    <th>Статус</th>
+                    <th>Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td class="fw-bold">{{ order.address }}</td>
+                    <td><small>{{ order.weight }}кг | {{ order.volume }}м³</small></td>
+                    <td>
+                        <span class="badge {% if order.status == 'pending' %}bg-warning text-dark{% elif order.status == 'planned' %}bg-secondary{% else %}bg-success{% endif %}">
+                            {{ order.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm" style="width: 220px;">
+                            <!-- Поле выбора даты -->
+                            <input type="date" class="form-control" id="reschedule-{{ order.id }}" value="{{ date|date:'Y-m-d' }}">
+
+                            <!-- Кнопка МАГИЯ (поиск даты) -->
+                            <button class="btn btn-outline-warning"
+                                    onclick="suggestDate({{ order.id }}, event)"
+                                    title="Найти ближайший день, где есть свободная машина под этот вес">
+                                🪄
+                            </button>
+
+                            <!-- Кнопка РАКЕТА (применить перенос) -->
+                            <button class="btn btn-primary"
+                                    onclick="rescheduleOrder({{ order.id }})"
+                                    title="Перенести заказ на выбранную дату">
+                                🚀
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center py-3 text-muted">Заказов на этот день нет</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+</div>
+<div class="modal-footer border-0">
+    {% if has_drafts %}
+    <button type="button" class="btn btn-success w-100 py-2 fw-bold" style="border-radius: 12px;" onclick="approveDayPlan('{{ date_str }}')">
+        ✅ Утвердить план и отправить на график рейсов
+    </button>
+    {% else %}
+    <button type="button" class="btn btn-light w-100 py-2 text-muted" style="border-radius: 12px;" disabled>
+        План утвержден или пуст
+    </button>
+    {% endif %}
 </div>

@@ -24,7 +24,9 @@
         color: var(--text-dark);
     }
 
-    .fc-event { cursor: pointer; }
+    .fc-event {
+        cursor: pointer;
+    }
 
     .fc .fc-button-primary {
         background-color: var(--brand-color);
@@ -80,6 +82,25 @@
     .status-canceled .btn-status-update {
         display: none !important;
     }
+
+    .pin-event {
+        background: transparent !important;
+        border: none !important;
+        font-size: 1.4rem !important; /* Размер иконки */
+        text-align: center;
+        margin-top: -5px;
+    }
+
+    /* Убираем синие точки/полоски по умолчанию */
+    .fc-daygrid-event-dot {
+        display: none !important;
+    }
+
+    /* Чтобы иконка не обрезалась */
+    .fc-v-event .fc-event-main, .fc-daygrid-event {
+        background: none !important;
+        border: none !important;
+    }
 </style>
 {% endblock %}
 
@@ -134,13 +155,24 @@
             initialView: 'dayGridMonth',
             locale: 'ru',
             firstDay: 1,
-            headerToolbar: {left: 'prev,next today', center: 'title', right: 'dayGridMonth,dayGridWeek'},
-            events: "{% url 'api_calendar_events' %}",
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,dayGridWeek'
+            },
+            // ЗАМЕНИТЕ ЭТУ СТРОКУ:
+            events: "{% url 'api_transport_calendar_events' %}",
+
             dateClick: function (info) {
                 loadScheduleForDate(info.dateStr);
             },
-            eventClick: function(info) {
+            eventClick: function (info) {
+                // При клике на иконку тоже загружаем данные
                 loadScheduleForDate(info.event.startStr.split('T')[0]);
+            },
+            // Чтобы эмодзи отображался корректно как HTML
+            eventContent: function (arg) {
+                return {html: `<div class="pin-event" title="Есть активные рейсы">${arg.event.title}</div>`};
             }
         });
         calendar.render();
@@ -182,38 +214,38 @@
                     'X-CSRFToken': '{{ csrf_token }}',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ status: newStatus })
+                body: JSON.stringify({status: newStatus})
             })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Находим контейнер этого заказа
-                    const orderRow = document.getElementById('order-' + orderId);
-                    if (orderRow) {
-                        // Меняем класс фона (CSS сам скроет кнопки и перекрасит полоску)
-                        orderRow.classList.remove('status-shipped', 'status-pending', 'status-planned');
-                        orderRow.classList.add('status-' + newStatus);
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Находим контейнер этого заказа
+                        const orderRow = document.getElementById('order-' + orderId);
+                        if (orderRow) {
+                            // Меняем класс фона (CSS сам скроет кнопки и перекрасит полоску)
+                            orderRow.classList.remove('status-shipped', 'status-pending', 'status-planned');
+                            orderRow.classList.add('status-' + newStatus);
 
-                        // Обновляем текст статуса внутри карточки, если есть контейнер для бейджа
-                        const badge = orderRow.querySelector('.status-badge-container');
-                        if (badge) {
-                            if (newStatus === 'delivered') {
-                                badge.innerHTML = '<span class="badge bg-success">✓ Доставлен</span>';
-                            } else {
-                                badge.innerHTML = '<span class="badge bg-danger">✕ Отменен</span>';
+                            // Обновляем текст статуса внутри карточки, если есть контейнер для бейджа
+                            const badge = orderRow.querySelector('.status-badge-container');
+                            if (badge) {
+                                if (newStatus === 'delivered') {
+                                    badge.innerHTML = '<span class="badge bg-success">✓ Доставлен</span>';
+                                } else {
+                                    badge.innerHTML = '<span class="badge bg-danger">✕ Отменен</span>';
+                                }
                             }
                         }
+                    } else {
+                        alert('Ошибка: ' + data.message);
+                        btn.disabled = false;
                     }
-                } else {
-                    alert('Ошибка: ' + data.message);
+                })
+                .catch(err => {
+                    console.error('Ошибка:', err);
+                    alert('Не удалось обновить статус заказа.');
                     btn.disabled = false;
-                }
-            })
-            .catch(err => {
-                console.error('Ошибка:', err);
-                alert('Не удалось обновить статус заказа.');
-                btn.disabled = false;
-            });
+                });
         });
     });
 </script>

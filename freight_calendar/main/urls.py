@@ -33,4 +33,6 @@ urlpatterns = [
     path('transport/maintenance/vehicle/<int:vehicle_id>/', views.vehicle_maintenance_detail_view,
          name='vehicle_maintenance_detail'),
     path('transport/maintenance/add-ajax/', views.add_maintenance_ajax, name='add_maintenance_ajax'),
-]
+    path('api/approve-plans-date/<str:date_str>/', views.approve_plans_by_date_api, name='approve_plans_date'),
+    path('api/order/<int:pk>/suggest-date/', views.suggest_optimal_date_api, name='api_suggest_date'),
+path('api/transport/calendar-events/', views.transport_calendar_events_api, name='api_transport_calendar_events'),]
