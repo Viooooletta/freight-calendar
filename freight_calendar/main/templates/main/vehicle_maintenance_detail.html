@@ -1,7 +1,27 @@
 {% extends 'main/base_dashboard.html' %}
 
-{% block title %}Управление простоем: {{ vehicle.name }}{% endblock %}
-{% block sidebar_icon %}🛠️{% endblock %}
+{% block title %}Управление простоем: {{ vehicle.name }} | Freight Calendar{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: 1.5rem;
+    }
+    .history-table thead {
+        background-color: #f1f3f5;
+    }
+    .badge-date {
+        font-weight: 600;
+        padding: 0.5em 0.8em;
+        border-radius: 8px;
+    }
+    .form-control:focus {
+        border-color: var(--brand-color);
+        box-shadow: 0 0 0 0.25rem rgba(146, 68, 122, 0.1);
+    }
+</style>
+{% endblock %}
 
 {% block sidebar_nav %}
 <a href="{% url 'transport_dashboard' %}"
@@ -14,114 +34,154 @@
 </a>
 <a href="{% url 'transport_maintenance' %}"
    class="nav-link active {% if request.resolver_match.url_name == 'transport_maintenance' %}active{% endif %}">
-    <span>🛠️</span> Календарь простоев
+    <span>🛠️</span> Календарь простоев ТС
+</a>
+<a href="{% url 'transport_drivers' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_drivers' %}active{% endif %}">
+    <span>👤</span> Управление водителями
 </a>
 {% endblock %}
+
 {% block content %}
-<div class="mb-4">
-    <a href="{% url 'transport_maintenance' %}" class="btn btn-outline-secondary btn-sm mb-3">
-        ← Назад к общему календарю
-    </a>
-    <h1 class="fw-bold">Управление состоянием: {{ vehicle.name }}</h1>
-</div>
-
-<div class="row">
-    <!-- Карточка с данными машины -->
-    <div class="col-lg-4">
-        <div class="card shadow-sm border-0 mb-4" style="border-radius: 1rem;">
-            <div class="card-body p-4">
-                <div class="text-center mb-3">
-                    <span style="font-size: 4rem;">🚛</span>
-                    <h3 class="fw-bold mt-2">{{ vehicle.name }}</h3>
-                </div>
-                <hr>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Грузоподъемность:</span>
-                    <span class="fw-bold">{{ vehicle.capacity_weight }} кг</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Объем кузова:</span>
-                    <span class="fw-bold">{{ vehicle.capacity_volume }} м³</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Форма добавления простоя -->
-        <div class="card shadow-sm border-0" style="border-radius: 1rem; border-left: 5px solid #0d6efd !important;">
-            <div class="card-body p-4">
-                <h5 class="fw-bold mb-3">Отметить простой/СТО</h5>
-                <form id="maintenanceForm">
-                    <input type="hidden" id="vehicleId" value="{{ vehicle.id }}">
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted">Дата начала</label>
-                        <input type="date" id="startDate" class="form-control" value="{{ today }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted">Дата окончания</label>
-                        <input type="date" id="endDate" class="form-control" value="{{ today }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="small fw-bold text-muted">Причина</label>
-                        <textarea id="reason" class="form-control" rows="2" placeholder="Напр: Замена ГРМ">Техническое обслуживание</textarea>
-                    </div>
-                    <button type="button" id="btnSave" class="btn btn-primary w-100 fw-bold py-2"
-                            style="border-radius: 0.5rem;">
-                        Зафиксировать простой
-                    </button>
-                </form>
+<div class="container-fluid mt-4">
+    <!-- Навигация назад -->
+    <div class="mb-4">
+        <a href="{% url 'transport_maintenance' %}" class="btn btn-link text-decoration-none text-muted p-0 mb-3">
+            <span class="me-1">←</span> Назад к аналитике мощностей
+        </a>
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-white shadow-sm rounded-4 p-3" style="font-size: 2rem;">🚛</div>
+            <div>
+                <h1 class="fw-bold mb-0">{{ vehicle.name }}</h1>
+                <p class="text-muted mb-0">Управление сервисным журналом и периодами простоя</p>
             </div>
         </div>
     </div>
 
-    <!-- Таблица истории простоев этой машины -->
-    <div class="col-lg-8">
-        <div class="card shadow-sm border-0" style="border-radius: 1rem;">
-            <div class="card-body p-4">
-                <h5 class="fw-bold mb-4">История простоев автомобиля</h5>
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead class="bg-light">
-                        <tr class="text-muted small text-uppercase">
-                            <th>Период</th>
-                            <th>Дней</th>
-                            <th>Причина</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for m in maintenances %}
-                        <tr>
-                            <td>
-                                <span class="badge bg-secondary">{{ m.start_date|date:"d.m.Y" }}</span>
-                                —
-                                <span class="badge bg-dark">{{ m.end_date|date:"d.m.Y" }}</span>
-                            </td>
-                            <td>
-                                <!-- Просто выводим даты, так как вычитание требует кастомного фильтра -->
-                                Запись сохранена
-                            </td>
-                            <td class="text-muted">{{ m.reason }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-center py-5 text-muted">Записей о простоях нет</td>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+    <div class="row g-4">
+        <!-- ЛЕВАЯ КОЛОНКА: Характеристики и Форма -->
+        <div class="col-lg-4">
+            <!-- Характеристики -->
+            <div class="card shadow-sm border-0 info-card mb-4">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4">Технические данные</h5>
+                    <div class="vstack gap-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small text-uppercase fw-bold">Грузоподъемность</span>
+                            <span class="badge bg-white text-dark border shadow-sm px-3 py-2 rounded-3">{{ vehicle.capacity_weight|floatformat:0 }} кг</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small text-uppercase fw-bold">Объем кузова</span>
+                            <span class="badge bg-white text-dark border shadow-sm px-3 py-2 rounded-3">{{ vehicle.capacity_volume|floatformat:1 }} м³</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small text-uppercase fw-bold">Системный ID</span>
+                            <span class="text-muted">#{{ vehicle.id }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Форма регистрации простоя -->
+            <div class="card shadow-sm border-0 rounded-4" style="border-top: 5px solid var(--brand-color) !important;">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Зарегистрировать простой</h5>
+                    <p class="text-muted small mb-4">В указанные даты автомобиль будет автоматически исключен из алгоритма планирования (ОКП).</p>
+
+                    <form id="maintenanceForm">
+                        <input type="hidden" id="vehicleId" value="{{ vehicle.id }}">
+                        <div class="mb-3">
+                            <label class="small fw-bold text-muted text-uppercase mb-1">Дата начала СТО</label>
+                            <input type="date" id="startDate" class="form-control border-0 bg-light p-3 rounded-3" value="{{ today }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="small fw-bold text-muted text-uppercase mb-1">Дата завершения</label>
+                            <input type="date" id="endDate" class="form-control border-0 bg-light p-3 rounded-3" value="{{ today }}" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="small fw-bold text-muted text-uppercase mb-1">Причина обслуживания</label>
+                            <textarea id="reason" class="form-control border-0 bg-light p-3 rounded-3" rows="3" placeholder="Напр: Плановое ТО-2 или Замена сцепления">Техническое обслуживание</textarea>
+                        </div>
+                        <button type="button" id="btnSave" class="btn btn-primary w-100 fw-bold py-3 shadow"
+                                style="border-radius: 12px; background: var(--brand-color); border:none;">
+                            💾 Сохранить запись
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА: История -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 rounded-4 bg-white">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4">Архив записей технического обслуживания</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle history-table">
+                            <thead>
+                                <tr class="text-muted small text-uppercase">
+                                    <th class="ps-4">Период неактивности</th>
+                                    <th>Длительность</th>
+                                    <th>Причина / Комментарий Менеджера</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in maintenances %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-secondary-subtle text-secondary border badge-date">{{ m.start_date|date:"d.m.Y" }}</span>
+                                            <span class="text-muted">→</span>
+                                            <span class="badge bg-dark text-white badge-date">{{ m.end_date|date:"d.m.Y" }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold text-primary">Запись активна</span>
+                                    </td>
+                                    <td>
+                                        <div class="text-dark small fw-semibold">{{ m.reason }}</div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-5 text-muted">
+                                        <div class="display-6 mb-3">📝</div>
+                                        <p>История простоев пуста. Машина всегда была в строю.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
     document.getElementById('btnSave').addEventListener('click', function () {
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+
+        // Валидация на клиенте
+        if (new Date(start) > new Date(end)) {
+            alert("Ошибка: Дата начала не может быть позже даты окончания!");
+            return;
+        }
+
         const payload = {
             vehicle_id: document.getElementById('vehicleId').value,
-            start_date: document.getElementById('startDate').value,
-            end_date: document.getElementById('endDate').value,
+            start_date: start,
+            end_date: end,
             reason: document.getElementById('reason').value
         };
+
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Сохранение...';
 
         fetch("{% url 'add_maintenance_ajax' %}", {
             method: 'POST',
@@ -132,15 +192,21 @@
             },
             body: JSON.stringify(payload)
         })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    location.reload(); // Перезагружаем страницу, чтобы увидеть новый простой
-                } else {
-                    alert("Ошибка: " + data.message);
-                }
-            })
-            .catch(err => alert("Ошибка при сохранении"));
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert("Ошибка: " + data.message);
+                btn.disabled = false;
+                btn.innerHTML = '💾 Сохранить запись';
+            }
+        })
+        .catch(err => {
+            alert("Ошибка соединения с сервером");
+            btn.disabled = false;
+            btn.innerHTML = '💾 Сохранить запись';
+        });
     });
 </script>
 {% endblock %}

@@ -1,0 +1,256 @@
+{% extends 'main/base_dashboard.html' %}
+
+{% block title %}Управление персоналом | FreightCal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-card {
+        background: white;
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        padding: 2rem;
+        border: 1px solid rgba(146, 68, 122, 0.05);
+    }
+    .table thead th {
+        background: #f8f9fa;
+        border: none;
+        color: #6c757d;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 1px;
+        padding: 1.2rem;
+    }
+    .table td {
+        vertical-align: middle;
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    .editable-input {
+        border: 1px solid transparent;
+        background: transparent;
+        padding: 0.5rem;
+        border-radius: 8px;
+        width: 100%;
+        transition: all 0.3s;
+        font-size: 0.9rem;
+    }
+    .editable-input:hover {
+        background: #f1f3f5;
+    }
+    .editable-input:focus {
+        border-color: var(--brand-color);
+        background: white;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(146, 68, 122, 0.1);
+    }
+    /* Класс для анимации успешного сохранения */
+    .save-success {
+        background-color: #d1e7dd !important;
+        transition: background-color 0.5s;
+    }
+
+    .status-switch { cursor: pointer; transform: scale(1.1); }
+
+    .btn-fire {
+        color: #dc3545;
+        background: #fff5f5;
+        border: 1px solid #ffe3e3;
+        padding: 0.5rem 0.8rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        transition: 0.2s;
+    }
+    .btn-fire:hover {
+        background: #dc3545;
+        color: white;
+        box-shadow: 0 4px 10px rgba(220, 53, 69, 0.2);
+    }
+
+    .role-select {
+        border: 1px solid #eee;
+        background: #f8f9fa;
+        color: #495057;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    .role-select:focus {
+        border-color: var(--brand-color);
+        outline: none;
+    }
+</style>
+{% endblock %}
+
+{% block sidebar_nav %}
+    <a href="{% url 'admin_users' %}" class="nav-link active">
+        <span>👥</span> Работа с персоналом
+    </a>
+    <a href="{% url 'admin_logs' %}" class="nav-link">
+        <span>📜</span> Журнал событий
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <span class="badge mb-2" style="background: var(--brand-light); color: var(--brand-color); font-weight: 700;">ADMINISTRATION</span>
+            <h1 class="fw-bold display-6 mb-0">Управление пользователями</h1>
+        </div>
+        <div class="text-end">
+            <div class="h4 fw-bold mb-0 text-primary">{{ users|length }}</div>
+            <div class="small text-muted text-uppercase fw-bold">Аккаунтов в системе</div>
+        </div>
+    </div>
+
+    <div class="user-card border-0">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">Имя (Login)</th>
+                        <th style="width: 25%;">Email</th>
+                        <th style="width: 15%;">Роль в системе</th>
+                        <th class="text-center">Активен</th>
+                        <th class="text-center">Staff</th>
+                        <th>Смена пароля</th>
+                        <th class="text-end">Управление</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr id="user-row-{{ user.id }}">
+                        <td>
+                            <input type="text" class="editable-input fw-bold" value="{{ user.username }}"
+                                   id="input-username-{{ user.id }}"
+                                   onchange="updateUser({{ user.id }}, 'username', this.value)">
+                        </td>
+                        <td>
+                            <input type="email" class="editable-input" value="{{ user.email }}"
+                                   id="input-email-{{ user.id }}"
+                                   onchange="updateUser({{ user.id }}, 'email', this.value)">
+                        </td>
+                        <td>
+                            <select class="role-select w-100" onchange="updateUser({{ user.id }}, 'role', this.value)">
+                                {% for val, label in user.ROLE_CHOICES %}
+                                <option value="{{ val }}" {% if user.role == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input type="checkbox" class="form-check-input status-switch"
+                                       {% if user.is_active %}checked{% endif %}
+                                       onchange="updateUser({{ user.id }}, 'is_active', this.checked)">
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input type="checkbox" class="form-check-input status-switch"
+                                       {% if user.is_staff %}checked{% endif %}
+                                       onchange="updateUser({{ user.id }}, 'is_staff', this.checked)">
+                            </div>
+                        </td>
+                        <td>
+                            <div class="input-group input-group-sm shadow-sm" style="max-width: 160px; border-radius: 8px; overflow: hidden;">
+                                <input type="password" class="form-control border-0 bg-light" placeholder="Новый" id="pass-{{ user.id }}">
+                                <button class="btn btn-dark border-0 px-3" onclick="changePassword({{ user.id }})" title="Сохранить пароль">💾</button>
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            {% if user.id != request.user.id %}
+                                <button class="btn-fire" onclick="fireUser({{ user.id }}, '{{ user.username }}')">Уволить</button>
+                            {% else %}
+                                <span class="badge bg-light text-muted p-2">Это вы</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Универсальная функция обновления полей
+function updateUser(userId, field, value) {
+    const row = document.getElementById(`user-row-${userId}`);
+
+    fetch(`/admin-panel/users/update/${userId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ field: field, value: value })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Подсвечиваем строку зеленым при успехе
+            row.classList.add('save-success');
+            setTimeout(() => row.classList.remove('save-success'), 1000);
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    })
+    .catch(err => alert('Ошибка соединения с сервером'));
+}
+
+// Смена пароля
+function changePassword(userId) {
+    const passInput = document.getElementById(`pass-${userId}`);
+    if (!passInput.value) return alert('Пожалуйста, введите новый пароль');
+
+    fetch(`/admin-panel/users/password/${userId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: passInput.value })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Пароль пользователя успешно обновлен');
+            passInput.value = '';
+            const row = document.getElementById(`user-row-${userId}`);
+            row.classList.add('save-success');
+            setTimeout(() => row.classList.remove('save-success'), 1000);
+        }
+    });
+}
+
+// Удаление пользователя
+function fireUser(userId, name) {
+    if (!confirm(`ВНИМАНИЕ! Вы действительно хотите безвозвратно удалить сотрудника "${name}"? Это действие невозможно отменить.`)) return;
+
+    fetch(`/admin-panel/users/fire/${userId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const row = document.getElementById(`user-row-${userId}`);
+            row.style.transform = 'translateX(50px)';
+            row.style.opacity = '0';
+            setTimeout(() => row.remove(), 300);
+        } else {
+            alert('Ошибка при удалении: ' + data.message);
+        }
+    });
+}
+</script>
+{% endblock %}

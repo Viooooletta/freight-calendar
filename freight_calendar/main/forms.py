@@ -2,7 +2,17 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import CustomUser, Order, Vehicle
 
+from .models import Driver
 
+class DriverCreateForm(forms.ModelForm):
+    class Meta:
+        model = Driver
+        fields = ['name', 'phone', 'email'] # Добавили email
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ФИО водителя'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+375...'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'driver@mail.com'}),
+        }
 class RegisterForm(UserCreationForm):
     class Meta:
         model = CustomUser

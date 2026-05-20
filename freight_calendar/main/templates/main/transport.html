@@ -37,7 +37,11 @@
 </a>
 <a href="{% url 'transport_maintenance' %}"
    class="nav-link {% if request.resolver_match.url_name == 'transport_maintenance' %}active{% endif %}">
-    <span>🛠️</span> Календарь простоев
+    <span>🛠️</span> Календарь простоев ТС
+</a>
+<a href="{% url 'transport_drivers' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_drivers' %}active{% endif %}">
+    <span>👤</span> Управление водителями
 </a>
 {% endblock %}
 

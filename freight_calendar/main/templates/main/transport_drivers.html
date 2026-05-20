@@ -1,0 +1,416 @@
+{% extends 'main/base_dashboard.html' %}
+
+{% block title %}Управление штатом | Freight Calendar{% endblock %}
+
+{% block extra_css %}
+<style>
+    .driver-card {
+        transition: all 0.3s ease;
+        border: 1px solid #f0f0f0;
+    }
+
+    .driver-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05) !important;
+        border-color: var(--brand-color);
+    }
+
+    .schedule-scroll {
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+
+    .schedule-scroll::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .schedule-scroll::-webkit-scrollbar-thumb {
+        background: #ddd;
+        border-radius: 10px;
+    }
+
+    .nav-pills .nav-link.active {
+        background-color: var(--brand-color);
+    }
+
+    .nav-pills .nav-link {
+        color: #666;
+        font-weight: 600;
+    }
+
+    .kpi-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block sidebar_nav %}
+<a href="{% url 'transport_dashboard' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_dashboard' %}active{% endif %}">
+    <span>🚛</span> Управление автопарком
+</a>
+<a href="{% url 'transport_schedule' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_schedule' %}active{% endif %}">
+    <span>📋</span> График рейсов
+</a>
+<a href="{% url 'transport_maintenance' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_maintenance' %}active{% endif %}">
+    <span>🛠️</span> Календарь простоев ТС
+</a>
+<a href="{% url 'transport_drivers' %}"
+   class="nav-link active {% if request.resolver_match.url_name == 'transport_drivers' %}active{% endif %}">
+    <span>👤</span> Управление водителями
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Заголовок и KPI -->
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h1 class="fw-bold mb-1">Управление штатом</h1>
+            <p class="text-muted">Формирование графика смен и учет доступности водителей</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <div class="d-inline-flex align-items-center gap-3 bg-white p-2 px-4 rounded-4 shadow-sm border">
+                <div class="text-start">
+                    <div class="small text-muted fw-bold text-uppercase">Активность сегодня</div>
+                    <div class="h4 fw-bold mb-0 text-primary">{{ active_drivers_count }} / {{ drivers.count }} чел.
+                    </div>
+                </div>
+                <div class="vr mx-2"></div>
+                <button class="btn btn-primary shadow-sm px-4 py-2"
+                        style="border-radius: 12px; background: var(--brand-color); border:none;"
+                        data-bs-toggle="modal" data-bs-target="#hireModal">
+                    🚀 Нанять водителя
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% for d in drivers %}
+        <div class="col-md-3">
+            <!-- Исправлено: объединены классы, добавлен onclick и стиль курсора -->
+            <div class="driver-card p-4 text-center shadow-sm bg-white rounded-4"
+                 style="cursor: pointer;"
+                 onclick="openDriverPanel('{{ d.id }}', '{{ d.name|escapejs }}', '{{ d.phone|escapejs }}', '{{ d.email|escapejs }}')">
+
+                <div class="avatar-circle mx-auto mb-3"
+                     style="width: 70px; height: 70px; background: #f8f0f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                    👨‍✈️
+                </div>
+                <h5 class="fw-bold mb-1 text-truncate">{{ d.name }}</h5>
+                <p class="text-muted small mb-3">{{ d.phone }}</p>
+
+                {% if d.is_absent_today %}
+                <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill w-100">
+                        ⛔ {{ d.absence_reason|default:"Недоступен" }}
+                </span>
+                {% else %}
+                <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill w-100">
+                        ✅ На смене
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО УПРАВЛЕНИЯ ВОДИТЕЛЕМ -->
+<div class="modal fade" id="driverPanelModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 25px;">
+            <div class="modal-header border-0 p-4 pb-0">
+                <h5 class="fw-bold">Управление сотрудником</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <ul class="nav nav-pills mb-4 bg-light p-1 rounded-4 d-flex">
+                    <li class="nav-item flex-fill">
+                        <button class="nav-link active w-100 rounded-3" data-bs-toggle="pill"
+                                data-bs-target="#tab-info">Профиль
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill">
+                        <button class="nav-link w-100 rounded-3" data-bs-toggle="pill" data-bs-target="#tab-sched">
+                            График (30 дней)
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill">
+                        <button class="nav-link w-100 rounded-3" data-bs-toggle="pill" data-bs-target="#tab-abs">
+                            Отсутствие
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- ВКЛАДКА: ПРОФИЛЬ -->
+                    <div class="tab-pane fade show active" id="tab-info">
+                        <form id="editForm">
+                            <input type="hidden" id="edit-id">
+                            <div class="mb-3">
+                                <label class="small fw-bold text-muted text-uppercase mb-1">ФИО Водителя</label>
+                                <input type="text" id="edit-name" class="form-control border-0 bg-light p-3 rounded-3">
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <label class="small fw-bold text-muted text-uppercase mb-1">Телефон</label>
+                                    <input type="text" id="edit-phone"
+                                           class="form-control border-0 bg-light p-3 rounded-3">
+                                </div>
+                                <div class="col-6">
+                                    <label class="small fw-bold text-muted text-uppercase mb-1">Email</label>
+                                    <input type="email" id="edit-email"
+                                           class="form-control border-0 bg-light p-3 rounded-3">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary w-100 py-3 mt-4 fw-bold shadow-sm"
+                                    onclick="saveProfile()" style="border-radius:12px;">💾 Сохранить изменения
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- ВКЛАДКА: ГРАФИК СМЕН -->
+                    <div class="tab-pane fade" id="tab-sched">
+                        <div class="alert alert-info small py-2 mb-3 rounded-3">
+                            Отметьте рабочие дни и время. Изменения влияют на расчет мощности в календаре ОКП.
+                        </div>
+                        <div id="scheduleRows" class="schedule-scroll">
+                            <!-- Генерируется через JS -->
+                        </div>
+                    </div>
+
+                    <!-- ВКЛАДКА: ОТСУТСТВИЕ -->
+                    <!-- Вкладка Отсутствие -->
+                    <div class="tab-pane fade" id="tab-abs">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="bg-light p-3 rounded-4 h-100">
+                                    <h6 class="fw-bold mb-3 small">Новая запись</h6>
+                                    <div class="mb-2">
+                                        <label class="small text-muted fw-bold">Тип</label>
+                                        <select id="abs-type" class="form-select border-0 shadow-sm">
+                                            <option value="sick">Больничный</option>
+                                            <option value="vacation">Отпуск</option>
+                                            <option value="day_off">Отгул</option>
+                                        </select>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <label class="small text-muted fw-bold">С</label>
+                                            <input type="date" id="abs-start" class="form-control border-0 shadow-sm">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="small text-muted fw-bold">По</label>
+                                            <input type="date" id="abs-end" class="form-control border-0 shadow-sm">
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-danger w-100 fw-bold rounded-3"
+                                            onclick="saveAbsence()">Внести в базу
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="border p-3 rounded-4 h-100 bg-white">
+                                    <h6 class="fw-bold mb-3 small">Текущие статусы:</h6>
+                                    <!-- ВОТ ЭТОТ БЛОК БЫЛ ПРОПУЩЕН, ИЗ-ЗА НЕГО ВСЁ ЛОМАЛОСЬ -->
+                                    <div id="absenceList" class="small text-muted"
+                                         style="max-height: 200px; overflow-y: auto;">
+                                        <!-- Сюда JS выведет "В отпуске с... по..." -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- МОДАЛКА НАЙМА -->
+<div class="modal fade" id="hireModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 p-4 shadow-lg" style="border-radius: 20px;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Новый сотрудник</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">ФИО ПОЛНОСТЬЮ</label>
+                    <input type="text" name="name" class="form-control bg-light border-0 p-3"
+                           placeholder="Иванов Иван Иванович" required>
+                </div>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">КОНТАКТНЫЙ ТЕЛЕФОН</label>
+                    <input type="text" name="phone" class="form-control bg-light border-0 p-3" placeholder="+375..."
+                           required>
+                </div>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">EMAIL</label>
+                    <input type="email" name="email" class="form-control bg-light border-0 p-3"
+                           placeholder="driver@freight.by" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-3 mt-3 fw-bold shadow"
+                        style="border-radius: 12px; background: var(--brand-color); border:none;">
+                    Принять в штат
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentDriverId = null;
+
+    // Главная функция открытия панели
+    async function openDriverPanel(id, name, phone, email) {
+        currentDriverId = id;
+        document.getElementById('edit-id').value = id;
+        document.getElementById('edit-name').value = name;
+        document.getElementById('edit-phone').value = phone;
+        document.getElementById('edit-email').value = email;
+
+        // Показываем модалку сразу
+        const modal = new bootstrap.Modal(document.getElementById('driverPanelModal'));
+        modal.show();
+
+        // Загружаем данные с сервера
+        try {
+            const response = await fetch(`/api/driver/${id}/data/`);
+            if (!response.ok) throw new Error('Ошибка загрузки данных');
+            const data = await response.json();
+
+            // Отрисовываем график и отсутствия
+            renderSchedule(data.shifts);
+            renderAbsences(data.absences);
+        } catch (error) {
+            console.error(error);
+            // Если API еще не готово, хотя бы сгенерируем пустой график
+            renderSchedule({});
+        }
+    }
+
+    // Отрисовка графика (30 дней)
+    function renderSchedule(existingShifts) {
+        const container = document.getElementById('scheduleRows');
+        container.innerHTML = '';
+        const today = new Date();
+
+        for (let i = 0; i < 30; i++) {
+            let d = new Date();
+            d.setDate(today.getDate() + i);
+            let ds = d.toISOString().split('T')[0];
+
+            let dbData = existingShifts[ds] || {is_work: false, start: '08:00', end: '17:00'};
+
+            let row = document.createElement('div');
+            row.className = 'd-flex align-items-center gap-2 mb-2 p-2 bg-light rounded-3 border-start border-4 ' + (dbData.is_work ? 'border-success' : 'border-light');
+
+            row.innerHTML = `
+                <div style="width:90px">
+                    <div class="fw-bold small" style="font-size:0.75rem">${d.toLocaleDateString('ru-RU', {day:'numeric', month:'short'})}</div>
+                    <div class="text-muted" style="font-size:0.65rem">${d.toLocaleDateString('ru-RU', {weekday:'short'})}</div>
+                </div>
+                <div class="form-check form-switch me-2">
+                    <input class="form-check-input" type="checkbox" ${dbData.is_work ? 'checked' : ''} id="c-${ds}">
+                </div>
+                <input type="time" class="form-control form-control-sm border-0 shadow-sm" id="s-${ds}" value="${dbData.start}">
+                <input type="time" class="form-control form-control-sm border-0 shadow-sm" id="e-${ds}" value="${dbData.end}">
+                <button class="btn btn-sm btn-dark ms-auto" id="btn-${ds}" onclick="saveShift('${currentDriverId}','${ds}')">💾</button>
+            `;
+            container.appendChild(row);
+        }
+    }
+
+    // Отрисовка списка отсутствий
+    function renderAbsences(absences) {
+        const list = document.getElementById('absenceList');
+        if (!list) return;
+
+        if (!absences || absences.length === 0) {
+            list.innerHTML = '<p class="text-center py-3">Записей нет</p>';
+            return;
+        }
+        list.innerHTML = absences.map(a => `
+            <div class="p-2 mb-2 bg-light rounded-3 border-start border-3 border-danger">
+                <div class="fw-bold text-dark" style="font-size: 0.8rem">${a.type}</div>
+                <div style="font-size: 0.75rem">с ${a.start} по ${a.end}</div>
+            </div>
+        `).join('');
+    }
+
+    // Сохранение смены
+    async function saveShift(id, date) {
+        const btn = document.getElementById(`btn-${date}`);
+        const isWork = document.getElementById(`c-${date}`).checked;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '...';
+
+        const response = await fetch('{% url "toggle_driver_shift" %}', {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                driver_id: id,
+                date: date,
+                is_work_day: isWork,
+                start_time: document.getElementById(`s-${date}`).value,
+                end_time: document.getElementById(`e-${date}`).value
+            })
+        });
+
+        if (response.ok) {
+            btn.innerHTML = '✅';
+            setTimeout(() => { btn.innerHTML = originalHtml; }, 1000);
+        }
+    }
+
+    // Сохранение отсутствия
+    async function saveAbsence() {
+        const data = {
+            driver_id: currentDriverId,
+            absence_type: document.getElementById('abs-type').value,
+            start_date: document.getElementById('abs-start').value,
+            end_date: document.getElementById('abs-end').value
+        };
+
+        if (!data.start_date || !data.end_date) return alert("Укажите даты");
+
+        const response = await fetch('{% url "add_driver_absence_ajax" %}', {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            alert("Запись добавлена. Календарь ОКП обновлен.");
+            location.reload();
+        }
+    }
+
+    // Сохранение профиля
+    function saveProfile() {
+        const id = document.getElementById('edit-id').value;
+        const data = {
+            name: document.getElementById('edit-name').value,
+            phone: document.getElementById('edit-phone').value,
+            email: document.getElementById('edit-email').value
+        };
+
+        fetch(`/transport/drivers/${id}/update/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'success') location.reload();
+        });
+    }
+</script>
+{% endblock %}

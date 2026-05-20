@@ -12,132 +12,127 @@
     #calendar {
         background: white;
         padding: 20px;
-        border-radius: 1.25rem;
+        border-radius: 1.5rem;
         border: none;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
     }
 
-    /* Стиль заголовка календаря */
     .fc .fc-toolbar-title {
         font-size: 1.25rem;
         font-weight: 700;
-        color: var(--text-dark);
-    }
-
-    .fc-event {
-        cursor: pointer;
+        color: #2d3436;
     }
 
     .fc .fc-button-primary {
         background-color: var(--brand-color);
         border: none;
+        border-radius: 10px;
     }
 
     .fc .fc-button-primary:hover {
         background-color: #7a3866;
     }
 
-    /* Контейнер списка рейсов */
     #scheduleContainer {
-        min-height: 400px;
+        min-height: 500px;
         transition: all 0.3s ease;
     }
 
     .date-badge {
-        background: var(--brand-light);
+        background: #f8f0f6;
         color: var(--brand-color);
-        padding: 0.5rem 1rem;
+        padding: 0.6rem 1.2rem;
         border-radius: 2rem;
         font-weight: 700;
         display: inline-block;
-    }
-
-    /* --- Цвета состояний заказа --- */
-    .order-row {
-        transition: all 0.4s ease;
-        border-left: 6px solid transparent;
-    }
-
-    /* В пути */
-    .status-shipped {
-        background-color: #f0f7ff !important;
-        border-left-color: #007bff !important;
-    }
-
-    /* Доставлен */
-    .status-delivered {
-        background-color: #f2faf5 !important;
-        border-left-color: #198754 !important;
-    }
-
-    /* Отменен */
-    .status-canceled {
-        background-color: #fff5f5 !important;
-        border-left-color: #dc3545 !important;
-        opacity: 0.8;
-    }
-
-    /* Скрываем кнопки действий, если статус уже финальный */
-    .status-delivered .btn-status-update,
-    .status-canceled .btn-status-update {
-        display: none !important;
+        box-shadow: 0 4px 10px rgba(146, 68, 122, 0.1);
     }
 
     .pin-event {
-        background: transparent !important;
-        border: none !important;
-        font-size: 1.4rem !important; /* Размер иконки */
+        font-size: 1.5rem;
         text-align: center;
-        margin-top: -5px;
+        cursor: pointer;
+        line-height: 1;
     }
 
-    /* Убираем синие точки/полоски по умолчанию */
     .fc-daygrid-event-dot {
         display: none !important;
     }
 
-    /* Чтобы иконка не обрезалась */
-    .fc-v-event .fc-event-main, .fc-daygrid-event {
+    .fc-event {
         background: none !important;
         border: none !important;
     }
+
+    /* --- ЭФФЕКТЫ ОБНОВЛЕНИЯ --- */
+    .status-changing {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .status-updated {
+        animation: highlightSuccess 1.5s ease;
+    }
+
+    @keyframes highlightSuccess {
+        0% {
+            background-color: transparent;
+        }
+        30% {
+            background-color: #d1e7dd;
+        }
+        100% {
+            background-color: transparent;
+        }
+    }
 </style>
 {% endblock %}
-
 {% block sidebar_nav %}
-<a href="{% url 'transport_dashboard' %}" class="nav-link"><span>🚛</span> Управление автопарком</a>
-<a href="{% url 'transport_schedule' %}" class="nav-link active"><span>📋</span> График рейсов</a>
-<a href="{% url 'transport_maintenance' %}" class="nav-link"><span>🛠️</span> Календарь простоев</a>
+<a href="{% url 'transport_dashboard' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_dashboard' %}active{% endif %}">
+    <span>🚛</span> Управление автопарком
+</a>
+<a href="{% url 'transport_schedule' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_schedule' %}active{% endif %}">
+    <span>📋</span> График рейсов
+</a>
+<a href="{% url 'transport_maintenance' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_maintenance' %}active{% endif %}">
+    <span>🛠️</span> Календарь простоев ТС
+</a>
+<a href="{% url 'transport_drivers' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'transport_drivers' %}active{% endif %}">
+    <span>👤</span> Управление водителями
+</a>
 {% endblock %}
-
 {% block content %}
-<div class="row align-items-end mb-4">
-    <div class="col-md-8">
-        <span class="badge mb-2"
-              style="background: #e6f7ff; color: #1890ff; font-weight: 700;">LIVE LOGISTICS CONTROL</span>
-        <h1 class="display-6 fw-bold mb-2">График активных рейсов</h1>
-        <div class="date-badge">
-            📅 <span id="currentDateDisplay">{{ today|date:"d E Y" }}</span>
+{% csrf_token %}
+<div class="container-fluid mt-4">
+    <div class="row align-items-center mb-5">
+        <div class="col-md-7">
+            <span class="badge mb-2"
+                  style="background: #e1f5fe; color: #0288d1; font-weight: 700; letter-spacing: 0.5px;">MONITORING & EXECUTION</span>
+            <h1 class="fw-bold mb-2">Оперативный график рейсов</h1>
+            <div class="date-badge">
+                📅 <span id="currentDateDisplay">{{ today|date:"d E Y" }} г.</span>
+            </div>
         </div>
-    </div>
-    <div class="col-md-4 text-md-end">
-        <button onclick="location.reload()" class="btn btn-outline-secondary rounded-pill px-4">
-            🔄 Сегодня
-        </button>
-    </div>
-</div>
-
-<div class="row g-4">
-    <!-- Левая часть: Список машин и заказов -->
-    <div class="col-lg-5">
-        <div id="scheduleContainer">
-            {% include 'main/schedule_plans_list.html' %}
+        <div class="col-md-5 text-md-end">
+            <button onclick="location.reload()" class="btn btn-white shadow-sm border rounded-3 px-4">🔄 Обновить
+                данные
+            </button>
         </div>
     </div>
 
-    <!-- Правая часть: Календарь -->
-    <div class="col-lg-7">
-        <div id="calendar"></div>
+    <div class="row g-4">
+        <div class="col-xl-6 col-lg-5">
+            <div id="scheduleContainer">
+                {% include 'main/schedule_plans_list.html' %}
+            </div>
+        </div>
+        <div class="col-xl-6 col-lg-7">
+            <div id="calendar"></div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -149,36 +144,21 @@
         const scheduleContainer = document.getElementById('scheduleContainer');
         const dateDisplay = document.getElementById('currentDateDisplay');
 
-        // 1. Инициализация календаря (БЕЗ ИЗМЕНЕНИЙ)
         const calendarEl = document.getElementById('calendar');
         const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             locale: 'ru',
             firstDay: 1,
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,dayGridWeek'
-            },
-            // ЗАМЕНИТЕ ЭТУ СТРОКУ:
+            height: 'auto',
+            headerToolbar: {left: 'prev,next today', center: 'title', right: 'dayGridMonth'},
             events: "{% url 'api_transport_calendar_events' %}",
-
-            dateClick: function (info) {
-                loadScheduleForDate(info.dateStr);
-            },
-            eventClick: function (info) {
-                // При клике на иконку тоже загружаем данные
-                loadScheduleForDate(info.event.startStr.split('T')[0]);
-            },
-            // Чтобы эмодзи отображался корректно как HTML
-            eventContent: function (arg) {
-                return {html: `<div class="pin-event" title="Есть активные рейсы">${arg.event.title}</div>`};
-            }
+            dateClick: (info) => loadSchedule(info.dateStr),
+            eventClick: (info) => loadSchedule(info.event.startStr.split('T')[0]),
+            eventContent: () => ({html: `<div class="pin-event">📌</div>`})
         });
         calendar.render();
 
-        // 2. Функция загрузки данных на выбранный день (БЕЗ ИЗМЕНЕНИЙ)
-        function loadScheduleForDate(dateStr) {
+        function loadSchedule(dateStr) {
             scheduleContainer.style.opacity = '0.4';
             fetch(`/api/transport/schedule/${dateStr}/`)
                 .then(res => res.json())
@@ -188,65 +168,61 @@
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric'
-                    });
+                    }) + ' г.';
                 })
                 .finally(() => {
                     scheduleContainer.style.opacity = '1';
                 });
         }
 
-        // 3. НОВЫЙ БЛОК: Обработка нажатия на кнопки статуса (Галочка / Крестик)
-        // Используем делегирование событий, чтобы кнопки работали даже после смены даты
-        document.addEventListener('click', function (e) {
-            const btn = e.target.closest('.btn-status-update');
-            if (!btn) return;
+        // Глобальная функция обновления статуса
+        window.updateStatus = function (orderId, newStatus) {
+            const row = document.getElementById(`order-row-${orderId}`);
+            if (row) row.classList.add('status-changing');
 
-            const orderId = btn.dataset.id;
-            const newStatus = btn.dataset.status;
+            // Более надежный способ получения токена
+            const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-            // Визуально отключаем кнопку
-            btn.disabled = true;
-
-            fetch(`/transport/order/${orderId}/status/`, {
+            fetch(`/api/order/${orderId}/status/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-CSRFToken': token // Используем полученный токен
                 },
                 body: JSON.stringify({status: newStatus})
             })
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) {
+                        // Если сервер ответил ошибкой (403, 404, 500)
+                        return res.text().then(text => {
+                            throw new Error(`Сервер ответил ${res.status}: ${text}`)
+                        });
+                    }
+                    return res.json();
+                })
                 .then(data => {
                     if (data.status === 'success') {
-                        // Находим контейнер этого заказа
-                        const orderRow = document.getElementById('order-' + orderId);
-                        if (orderRow) {
-                            // Меняем класс фона (CSS сам скроет кнопки и перекрасит полоску)
-                            orderRow.classList.remove('status-shipped', 'status-pending', 'status-planned');
-                            orderRow.classList.add('status-' + newStatus);
+                        const statusCell = document.getElementById(`status-cell-${orderId}`);
+                        const btnGroup = document.getElementById(`btn-group-${orderId}`);
 
-                            // Обновляем текст статуса внутри карточки, если есть контейнер для бейджа
-                            const badge = orderRow.querySelector('.status-badge-container');
-                            if (badge) {
-                                if (newStatus === 'delivered') {
-                                    badge.innerHTML = '<span class="badge bg-success">✓ Доставлен</span>';
-                                } else {
-                                    badge.innerHTML = '<span class="badge bg-danger">✕ Отменен</span>';
-                                }
-                            }
-                        }
-                    } else {
-                        alert('Ошибка: ' + data.message);
-                        btn.disabled = false;
+                        let badgeClass = newStatus === 'delivered' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
+                        let statusText = newStatus === 'delivered' ? '✓ Доставлен' : '✕ Отменен';
+
+                        statusCell.innerHTML = `<span class="badge ${badgeClass} px-3 py-2 rounded-pill border">${statusText}</span>`;
+                        if (btnGroup) btnGroup.remove();
+
+                        row.classList.remove('status-changing');
+                        row.classList.add('status-updated');
                     }
                 })
                 .catch(err => {
-                    console.error('Ошибка:', err);
-                    alert('Не удалось обновить статус заказа.');
-                    btn.disabled = false;
+                    console.error('Детали ошибки:', err);
+                    alert('Ошибка при обновлении: ' + err.message); // Теперь покажет реальную ошибку
+                })
+                .finally(() => {
+                    if (row) row.classList.remove('status-changing');
                 });
-        });
+        };
     });
 </script>
 {% endblock %}

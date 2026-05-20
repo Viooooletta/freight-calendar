@@ -1,0 +1,93 @@
+<style>
+    /* Контейнер шкалы */
+    .timeline-wrapper {
+        padding: 1rem 1rem 1rem 2rem;
+    }
+    .tm-line {
+        border-left: 2px solid #e9ecef;
+        margin-left: 10px;
+        padding-left: 30px;
+        position: relative;
+    }
+
+    /* Элемент события */
+    .tm-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+        transition: all 0.2s ease;
+    }
+    .tm-item:last-child { padding-bottom: 0; }
+
+    /* Точка на шкале */
+    .tm-dot {
+        position: absolute;
+        left: -39px;
+        top: 4px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        border: 4px solid #dee2e6;
+        z-index: 2;
+        box-shadow: 0 0 0 4px #fff;
+    }
+
+    /* Цветовая кодировка по типам действий из views.py */
+    .type-create { border-color: #198754 !important; } /* Зеленый: Заказ, Регистрация */
+    .type-delete { border-color: #dc3545 !important; } /* Красный: Удаление, Увольнение */
+    .type-update { border-color: #fd7e14 !important; } /* Оранжевый: Планирование, Статус, Перенос */
+    .type-auth   { border-color: #0d6efd !important; } /* Синий: Авторизация, Вход */
+    .type-system { border-color: #6f42c1 !important; } /* Фиолетовый: Утверждение */
+
+    .tm-date {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #adb5bd;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .tm-content {
+        background: #fff;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid #f1f1f1;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }
+</style>
+
+<div class="timeline-wrapper">
+    <div class="tm-line">
+        {% for log in logs %}
+        <div class="tm-item">
+            <!-- Динамический класс для точки -->
+            <div class="tm-dot
+                {% if 'Заказ' in log.action_type or 'Регистрация' in log.action_type or 'Нанят' in log.action_type %}type-create
+                {% elif 'Удаление' in log.action_type or 'Уволить' in log.action_type or 'Увольнение' in log.action_type %}type-delete
+                {% elif 'Планирование' in log.action_type or 'Статус' in log.action_type or 'Перенос' in log.action_type or 'Изменение' in log.action_type %}type-update
+                {% elif 'Авторизация' in log.action_type or 'Вход' in log.action_type %}type-auth
+                {% elif 'Утверждение' in log.action_type %}type-system
+                {% endif %}">
+            </div>
+
+            <span class="tm-date">{{ log.timestamp|date:"d E Y | H:i" }}</span>
+
+            <div class="tm-content">
+                <div class="fw-bold mb-1" style="color: #2d3436; font-size: 0.9rem;">
+                    {{ log.action_type }}
+                </div>
+                <div class="text-muted small" style="line-height: 1.4;">
+                    {{ log.description }}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5">
+            <div class="display-6 mb-2">🔍</div>
+            <p class="text-muted small fw-bold">В архиве пока нет записей о действиях этого пользователя</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
