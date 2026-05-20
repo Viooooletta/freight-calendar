@@ -30,7 +30,8 @@ urlpatterns = [
     path('logistics/api/calendar-events/', views.calendar_events_api, name='api_calendar_events'),
     path('api/plan-detail/<str:date_str>/', views.plan_detail_api, name='api_plan_detail'),
     path('api/order/<int:pk>/suggest-date/', views.suggest_optimal_date_api, name='api_suggest_date'),
-    path('api/order/<int:pk>/status/', views.update_order_status_ajax, name='update_order_status'),    # Теперь этот URL обрабатывает и перенос
+    path('api/order/<int:pk>/status/', views.update_order_status_ajax, name='update_order_status'),
+    # Теперь этот URL обрабатывает и перенос
     path('api/approve-plans-date/<str:date_str>/', views.approve_plans_by_date_api, name='approve_plans_date'),
 
     # Транспортный отдел (Автопарк)
@@ -57,4 +58,5 @@ urlpatterns = [
     path('api/transport/calendar-events/', views.transport_calendar_events_api, name='api_transport_calendar_events'),
     # Календарь для рейсов
     path('api/driver/<int:pk>/data/', views.get_driver_data_api, name='api_driver_data'),
+    path('password-reset/', views.password_reset_request, name='password_reset_request'),
 ]

@@ -22,6 +22,52 @@ from .models import (
     VehicleMaintenance, CustomUser, Driver, DriverAbsence, DriverSchedule
 )
 from .forms import RegisterForm, VehicleCreateForm, OrderCreateForm, DriverCreateForm
+from django.core.mail import EmailMessage  # Импортируем расширенный класс
+from django.contrib import messages
+from django.utils.crypto import get_random_string
+from django.template.loader import render_to_string
+
+
+def password_reset_request(request):
+    if request.method == "POST":
+        email = request.POST.get('email')
+        associated_user = CustomUser.objects.filter(email=email).first()
+
+        if associated_user:
+            new_password = get_random_string(length=10)
+            associated_user.set_password(new_password)
+            associated_user.save()
+
+            # Формируем тему и текст
+            subject = f"Новый пароль для аккаунта '{associated_user.username}' в системе Freight Calendar"
+            message = (
+                f"Здравствуйте, {associated_user.username}!\n\n"
+                f"Вы запросили восстановление доступа в системе Freight Calendar.\n"
+                f"Ваш новый временный пароль: {new_password}\n\n"
+                f"Пожалуйста, используйте его для входа и смените в настройках профиля."
+            )
+
+            # Используем EmailMessage для корректной работы с кодировкой UTF-8
+            email_msg = EmailMessage(
+                subject=subject,
+                body=message,
+                to=[associated_user.email],
+            )
+            email_msg.encoding = 'utf-8'  # Явно указываем кодировку
+
+            try:
+                email_msg.send()
+                messages.success(request, 'Проверьте вашу указанную почту — мы отправили новый пароль.')
+                log_action(associated_user, "Сброс пароля", "Запрошен новый пароль на почту")
+                return redirect('login')
+            except Exception as e:
+                # Выводим более понятную ошибку, если что-то пойдет не так
+                messages.error(request, f'Ошибка при отправке письма. Убедитесь, что настройки SMTP верны.')
+                print(f"Email error: {e}")
+        else:
+            messages.error(request, 'Пользователь с таким email не найден в системе.')
+
+    return render(request, 'main/password_reset.html')
 
 
 # ==========================================
@@ -530,6 +576,7 @@ def update_order_status_ajax(request, pk):
         return JsonResponse({'status': 'error', 'message': 'Недопустимый статус'}, status=400)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
 
 # ==========================================
 # 5. ТРАНСПОРТНЫЙ ОТДЕЛ: АВТОПАРК И ТО

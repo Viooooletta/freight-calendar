@@ -113,3 +113,11 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'main.CustomUser'
+# Настройки почты
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'violetta.karavay@gmail.com' # Твоя почта Gmail
+EMAIL_HOST_PASSWORD = 'lbob odbo jcgx dwre' # Код из 16 букв (Пароль приложения Google)
+DEFAULT_FROM_EMAIL = 'Freight Calendar <violetta.karavay@gmail.com>'
