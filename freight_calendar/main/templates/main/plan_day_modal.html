@@ -9,7 +9,8 @@
 
 <div class="modal-body p-4">
     <!-- Блок Мощностей (KPI) -->
-    <div class="p-3 mb-4 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); border: 1px solid #e0e0e0;">
+    <div class="p-3 mb-4 rounded-4 shadow-sm"
+         style="background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); border: 1px solid #e0e0e0;">
         <div class="row align-items-center">
             <div class="col-md-7">
                 <span class="text-muted small text-uppercase fw-bold">Доступная пропускная способность:</span>
@@ -43,17 +44,27 @@
         </h6>
         <div class="vstack gap-2">
             {% for plan in day_plans %}
-            <div class="p-3 border rounded-4 bg-white shadow-sm hover-shadow transition-all" style="border-left: 5px solid #0d6efd !important;">
+            <div class="p-3 border rounded-4 bg-white shadow-sm hover-shadow transition-all"
+                 style="border-left: 5px solid #0d6efd !important;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="fw-bold text-dark">Рейс #{{ plan.id }}: {{ plan.vehicle.name }}</div>
-                        <div class="small text-muted">Водитель: <span class="text-primary fw-bold">{{ plan.driver.name }}</span></div>
+                        <div class="small text-muted">Водитель: <span class="text-primary fw-bold">{{ plan.driver.name }}</span>
+                        </div>
                     </div>
                     <div class="text-end">
                         <span class="badge bg-soft-primary text-primary rounded-pill mb-1">{{ plan.planitem_set.count }} заказа(ов)</span>
                         <!-- ИСПРАВЛЕНО: Вывод времени выезда -->
                         <div class="small text-muted">
-                            выезд: <span class="fw-bold text-dark">{{ plan.driver.driverschedule_set.first.start_time|time:"H:i"|default:"08:00" }}</span>
+                            выезд: <span class="fw-bold text-dark">
+        {% with shift=plan.get_driver_shift %}
+            {% if shift %}
+                {{ shift.start_time|time:"H:i" }}
+            {% else %}
+                08:00  {# Время по умолчанию, если смена не найдена #}
+            {% endif %}
+        {% endwith %}
+    </span>
                         </div>
                     </div>
                 </div>
@@ -71,60 +82,63 @@
         <div class="table-responsive rounded-4 border shadow-sm bg-white">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
-                    <tr class="small text-muted">
-                        <th class="ps-4">Адрес доставки</th>
-                        <th>Параметры</th>
-                        <th>Статус</th>
-                        <th class="text-end pe-4">Действия по перепланированию</th>
-                    </tr>
+                <tr class="small text-muted">
+                    <th class="ps-4">Адрес доставки</th>
+                    <th>Параметры</th>
+                    <th>Статус</th>
+                    <th class="text-end pe-4">Действия по перепланированию</th>
+                </tr>
                 </thead>
                 <tbody>
-                    {% for order in orders %}
-                    <tr class="{% if order.status == 'pending' %}table-danger-light{% endif %}">
-                        <td class="ps-4">
-                            <div class="fw-bold small">{{ order.address }}</div>
-                            <div class="text-muted" style="font-size: 0.75rem;">ID: {{ order.id }} | {{ order.get_delivery_type_display }}</div>
-                        </td>
-                        <td class="small">
-                            <div>{{ order.weight|floatformat:0 }} кг</div>
-                            <div class="text-muted">{{ order.volume|floatformat:1 }} м³</div>
-                        </td>
-                        <td>
-                            {% if order.status == 'pending' %}
-                            <span class="badge bg-danger rounded-pill shadow-sm" title="Не поместился в план">⚠ Ожидает</span>
-                            {% elif order.status == 'planned' %}
-                            <span class="badge bg-success rounded-pill shadow-sm">✅ В плане</span>
-                            {% else %}
-                            <span class="badge bg-secondary rounded-pill">{{ order.get_status_display }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-end pe-4">
-                            <div class="d-inline-flex gap-1">
-                                <input type="date" class="form-control form-control-sm border-warning-subtle"
-                                       id="reschedule-{{ order.id }}"
-                                       value="{{ date|date:'Y-m-d' }}"
-                                       style="width: 130px; font-size: 0.8rem;">
+                {% for order in orders %}
+                <tr class="{% if order.status == 'pending' %}table-danger-light{% endif %}">
+                    <td class="ps-4">
+                        <div class="fw-bold small">{{ order.address }}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">ID: {{ order.id }} | {{
+                            order.get_delivery_type_display }}
+                        </div>
+                    </td>
+                    <td class="small">
+                        <div>{{ order.weight|floatformat:0 }} кг</div>
+                        <div class="text-muted">{{ order.volume|floatformat:1 }} м³</div>
+                    </td>
+                    <td>
+                        {% if order.status == 'pending' %}
+                        <span class="badge bg-danger rounded-pill shadow-sm"
+                              title="Не поместился в план">⚠ Ожидает</span>
+                        {% elif order.status == 'planned' %}
+                        <span class="badge bg-success rounded-pill shadow-sm">✅ В плане</span>
+                        {% else %}
+                        <span class="badge bg-secondary rounded-pill">{{ order.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-4">
+                        <div class="d-inline-flex gap-1">
+                            <input type="date" class="form-control form-control-sm border-warning-subtle"
+                                   id="reschedule-{{ order.id }}"
+                                   value="{{ date|date:'Y-m-d' }}"
+                                   style="width: 130px; font-size: 0.8rem;">
 
-                                <!-- ИСПРАВЛЕНО: Добавлен type="button" чтобы IDE не подчеркивала красным -->
-                                <button type="button" class="btn btn-sm btn-outline-warning shadow-sm"
-                                        onclick="suggestDate({{ order.id }}, event)"
-                                        title="Найти свободное окно">
-                                    <span>🪄</span>
-                                </button>
+                            <!-- ИСПРАВЛЕНО: Добавлен type="button" чтобы IDE не подчеркивала красным -->
+                            <button type="button" class="btn btn-sm btn-outline-warning shadow-sm"
+                                    onclick="suggestDate({{ order.id }}, event)"
+                                    title="Найти свободное окно">
+                                <span>🪄</span>
+                            </button>
 
-                                <button type="button" class="btn btn-sm btn-primary shadow-sm"
-                                        onclick="rescheduleOrder({{ order.id }})"
-                                        title="Перенести на выбранную дату">
-                                    <span>🚀</span>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center py-4 text-muted small">На эту дату нет заказов</td>
-                    </tr>
-                    {% endfor %}
+                            <button type="button" class="btn btn-sm btn-primary shadow-sm"
+                                    onclick="rescheduleOrder({{ order.id }})"
+                                    title="Перенести на выбранную дату">
+                                <span>🚀</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center py-4 text-muted small">На эту дату нет заказов</td>
+                </tr>
+                {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -134,7 +148,8 @@
 <div class="modal-footer border-0 p-4">
     <div class="row w-100 g-2">
         <div class="col-md-6">
-            <button type="button" class="btn btn-light w-100 py-2 fw-bold rounded-3" data-bs-dismiss="modal">Закрыть</button>
+            <button type="button" class="btn btn-light w-100 py-2 fw-bold rounded-3" data-bs-dismiss="modal">Закрыть
+            </button>
         </div>
         <div class="col-md-6">
             {% if has_drafts %}

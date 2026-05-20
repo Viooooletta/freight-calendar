@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Маршрутный лист №RS-{{ plan.id }}</title>
+    <style>
+        @page { size: A4; margin: 10mm; }
+        body { font-family: "Times New Roman", Times, serif; font-size: 12px; color: #000; line-height: 1.4; padding: 0; margin: 0; }
+
+        /* Стили для печати */
+        @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; }
+            .document-border { border: none; }
+        }
+
+        .no-print { background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; margin-bottom: 20px; text-align: center; }
+        .btn-print { padding: 10px 25px; background: #2d3436; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-family: sans-serif; }
+
+        .header-table { width: 100%; border: none; margin-bottom: 10px; }
+        .org-name { font-size: 16px; font-weight: bold; text-transform: uppercase; }
+
+        .doc-title { text-align: center; margin: 20px 0; }
+        .doc-title h1 { font-size: 20px; margin-bottom: 5px; text-decoration: underline; }
+
+        .info-section { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .info-section td { border: 1px solid #000; padding: 5px 10px; vertical-align: top; width: 50%; }
+
+        .order-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .order-table th, .order-table td { border: 1px solid #000; padding: 6px 4px; text-align: center; font-size: 11px; }
+        .order-table th { background: #f2f2f2; font-weight: bold; }
+        .text-left { text-align: left !important; padding-left: 5px !important; }
+
+        .tech-section { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        .tech-section td { border: 1px solid #000; padding: 8px; width: 33.3%; font-size: 10px; }
+
+        .footer-sig { width: 100%; margin-top: 30px; }
+        .footer-sig td { padding: 10px 0; width: 33%; }
+        .underline { border-bottom: 1px solid #000; display: inline-block; width: 150px; }
+
+        .stamped { position: relative; }
+        .stamped::after { content: "М.П."; position: absolute; border: 2px solid #ccc; color: #ccc; border-radius: 50%; padding: 15px 10px; transform: rotate(-15deg); font-size: 14px; top: -10px; left: 50px; opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <!-- Панель управления (не печатается) -->
+    <div class="no-print">
+        <button class="btn-print" onclick="window.print()">🖨 ПЕЧАТЬ ДОКУМЕНТА</button>
+        <p style="font-size: 11px; color: #666; margin-top: 8px;">Документ адаптирован для формата A4</p>
+    </div>
+
+    <!-- Шапка документа -->
+    <table class="header-table">
+        <tr>
+            <td class="org-name">ООО "Фрейт Календарь Логистика"</td>
+            <td style="text-align: right;">Утверждена приказом №45-Т от 12.01.2024</td>
+        </tr>
+        <tr>
+            <td>Адрес: г. Минск, ул. Транспортная, 102<br>Тел: +375 (29) 123-45-67</td>
+            <td style="text-align: right;">Код организации по ОКПО: 12345678</td>
+        </tr>
+    </table>
+
+    <div class="doc-title">
+        <h1>МАРШРУТНЫЙ ЛИСТ № RS-{{ plan.id }}</h1>
+        <p>на <strong>{{ plan.date|date:"d" }}</strong> ______________ 202__ г.</p>
+    </div>
+
+    <!-- Основные данные -->
+    <table class="info-section">
+        <tr>
+            <td>
+                <strong>ВОДИТЕЛЬ:</strong> {{ plan.driver.name }}<br>
+                <strong>Удостоверение №:</strong> __________________<br>
+                <strong>Телефон:</strong> {{ plan.driver.phone }}
+            </td>
+            <td>
+                <strong>АВТОМОБИЛЬ:</strong> {{ plan.vehicle.name }}<br>
+                <strong>Грузоподъемность:</strong> {{ plan.vehicle.capacity_weight|floatformat:0 }} кг<br>
+                <strong>Объем кузова:</strong> {{ plan.vehicle.capacity_volume|floatformat:1 }} м³
+            </td>
+        </tr>
+    </table>
+
+    <!-- Технический блок -->
+    <table class="tech-section">
+        <tr>
+            <td>
+                <strong>ВЫЕЗД СО СТОЯНКИ:</strong><br>
+                Спидометр: ______________ км.<br>
+                Время (план): {{ plan.driver.driverschedule_set.first.start_time|time:"H:i"|default:"08:00" }}<br>
+                Время (факт): ______________
+            </td>
+            <td>
+                <strong>ВОЗВРАТ НА СТОЯНКУ:</strong><br>
+                Спидометр: ______________ км.<br>
+                Время (план): {{ plan.driver.driverschedule_set.first.end_time|time:"H:i"|default:"17:00" }}<br>
+                Время (факт): ______________
+            </td>
+            <td>
+                <strong>ГОРЮЧЕЕ (литры):</strong><br>
+                Остаток при выезде: ________<br>
+                Выдано по чекам: ________<br>
+                Остаток при возврате: _______
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">Автомобиль технически исправен. Выезд разрешен. <br><br> Механик: ___________ / ___________ /</td>
+            <td>Водитель по состоянию здоровья к рейсу допущен. <br><br> Медработник: ___________ / ___________ /</td>
+        </tr>
+    </table>
+
+    <!-- Список заказов (Задание водителю) -->
+    <h3 style="margin-bottom: 5px; text-transform: uppercase; font-size: 14px;">Задание на перевозку грузов:</h3>
+    <table class="order-table">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 30px;">№</th>
+                <th rowspan="2">Заказчик и адрес доставки</th>
+                <th colspan="2">Параметры груза</th>
+                <th rowspan="2">Время приб. (план)</th>
+                <th rowspan="2">Тип рейса</th>
+                <th rowspan="2">Отметка получателя (подпись, ФИО, штамп)</th>
+            </tr>
+            <tr>
+                <th>Вес, кг</th>
+                <th>Объем, м³</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td class="text-left"><strong>{{ item.order.address }}</strong></td>
+                <td>{{ item.order.weight|floatformat:0 }}</td>
+                <td>{{ item.order.volume|floatformat:1 }}</td>
+                <td>_______</td>
+                <td style="font-size: 9px;">{{ item.order.get_delivery_type_display }}</td>
+                <td style="height: 40px; width: 180px;"></td>
+            </tr>
+            {% endfor %}
+            <tr style="font-weight: bold; background: #eee;">
+                <td colspan="2" style="text-align: right;">ИТОГО ПО ЛИСТУ:</td>
+                <td>{{ total_w|floatformat:0 }}</td>
+                <td>{{ total_v|floatformat:1 }}</td>
+                <td colspan="3"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Подписи -->
+    <table class="footer-sig">
+        <tr>
+            <td class="stamped">
+                Диспетчер-логист:<br><br>
+                <span class="underline"></span> / {{ user.username }} /
+            </td>
+            <td>
+                Водитель принял:<br><br>
+                <span class="underline"></span> / {{ plan.driver.name }} /
+            </td>
+            <td style="text-align: right;">
+                Дата печати:<br>
+                {{ print_date|date:"d.m.Y H:i" }}
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-top: 20px; border: 1px dashed #000; padding: 10px; font-size: 10px;">
+        <strong>ОСОБЫЕ ОТМЕТКИ:</strong> (ДТП, поломки в пути, изменения маршрута) _____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+    </div>
+</body>
+</html>

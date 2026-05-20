@@ -3,195 +3,357 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Freight Calendar{% endblock %}</title>
+    <title>{% block title %}Freight Calendar ERP{% endblock %}</title>
+
+    <!-- Bootstrap 5 & Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Шрифт для бизнес-интерфейсов -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
             --brand-color: #92447a;
-            --brand-light: #fdf6fa;
-            --brand-soft: rgba(146, 68, 122, 0.05);
-            --text-dark: #2d1225;
-            --glass-bg: rgba(255, 255, 255, 0.8);
+            --brand-hover: #7a3865;
+            --brand-light: #f8f0f6;
+            --bg-body: #f1f5f9; /* Мягкий серый фон для контраста с белыми карточками */
+            --sidebar-width: 280px;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --glass-border: rgba(226, 232, 240, 0.8);
         }
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background: #f8fafc;
+            background-color: var(--bg-body);
+            color: var(--text-main);
             margin: 0;
-            overflow-x: hidden;
+            display: flex;
+            min-height: 100vh;
         }
 
-        /* Сайдбар */
+        /* САЙДБАР: Строгий и чистый */
         .sidebar {
-            background: var(--glass-bg);
-            backdrop-filter: blur(15px);
-            border-right: 1px solid rgba(146, 68, 122, 0.1);
-            height: 100vh;
-            padding: 2rem 1rem;
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 280px;
-            transition: all 0.3s ease;
-            z-index: 1000;
+            width: var(--sidebar-width);
+            background: #ffffff;
+            border-right: 1px solid var(--glass-border);
             display: flex;
             flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
         }
 
         .sidebar.hidden {
             transform: translateX(-100%);
         }
 
-        .nav-link {
-            color: var(--text-dark);
-            font-weight: 600;
-            padding: 0.8rem 1.2rem;
-            border-radius: 0.8rem;
-            margin-bottom: 0.3rem;
-            transition: all 0.2s;
+        .sidebar-brand {
+            padding: 2rem 1.5rem;
             display: flex;
             align-items: center;
             gap: 12px;
+            border-bottom: 1px solid #f8fafc;
+        }
+
+        .logo-box {
+            background: var(--brand-color);
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            box-shadow: 0 4px 10px rgba(146, 68, 122, 0.2);
+        }
+
+        .brand-name {
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.5px;
+            color: var(--text-main);
+        }
+
+        /* Навигация */
+        .sidebar-nav {
+            padding: 1.5rem 1rem;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .nav-section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 0 1rem 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0.75rem 1rem;
+            color: var(--text-muted);
+            font-weight: 500;
             text-decoration: none;
-            white-space: nowrap;
+            border-radius: 10px;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .nav-link i {
+            font-size: 1.2rem;
+            transition: transform 0.2s;
         }
 
         .nav-link:hover {
-            background: var(--brand-soft);
+            background: var(--brand-light);
             color: var(--brand-color);
+        }
+
+        .nav-link:hover i {
+            transform: translateX(3px);
         }
 
         .nav-link.active {
             background: var(--brand-color);
             color: white !important;
+            box-shadow: 0 10px 15px -3px rgba(146, 68, 122, 0.2);
+        }
+
+        /* Футер сайдбара (Профиль) */
+        .sidebar-footer {
+            padding: 1.5rem;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .user-profile-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0.75rem;
+            border-radius: 12px;
+            background: var(--brand-light);
+            text-decoration: none;
+            color: var(--text-main);
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .user-profile-btn:hover {
+            border-color: var(--brand-color);
+            background: #fff;
+        }
+
+        .user-profile-btn.active {
+            border-color: var(--brand-color);
+            background: #fff;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
         }
 
         .nav-avatar {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
             object-fit: cover;
+            border: 2px solid white;
         }
 
-        /* Контент */
-        .main-content {
-            margin-left: 280px;
-            padding: 4.5rem 3rem 2rem 3rem;
-            transition: all 0.3s ease;
+        .avatar-placeholder {
+            width: 36px;
+            height: 36px;
+            background: var(--brand-color);
+            color: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
         }
 
-        .main-content.expanded {
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0.75rem 1rem;
+            margin-top: 0.5rem;
+            color: #ef4444;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #fef2f2;
+        }
+
+        /* Основной контент */
+        .main-wrapper {
+            flex-grow: 1;
+            margin-left: var(--sidebar-width);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-wrapper.expanded {
             margin-left: 0;
         }
 
-        #sidebarToggle {
-            position: fixed;
-            top: 1.5rem;
-            left: 1.5rem;
-            z-index: 1100;
-            background: white;
-            border: 1px solid rgba(146, 68, 122, 0.2);
-            border-radius: 0.6rem;
-            padding: 0.5rem 0.9rem;
-            cursor: pointer;
-            color: var(--brand-color);
-            box-shadow: 0 4px 12px rgba(146, 68, 122, 0.08) !important;
+        .top-header {
+            height: 70px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            padding: 0 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 900;
         }
+
+        #sidebarToggle {
+            background: white;
+            border: 1px solid var(--glass-border);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        #sidebarToggle:hover {
+            color: var(--brand-color);
+            border-color: var(--brand-color);
+        }
+
+        .page-content {
+            padding: 2.5rem;
+        }
+
+        /* Кастомные тени для карточек в дочерних файлах */
+        .card {
+            border: 1px solid var(--glass-border);
+            border-radius: 1.25rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        {% block extra_css %}{% endblock %}
     </style>
-    {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-<button type="button" id="sidebarToggle" class="shadow-sm">☰</button>
-
-<nav class="sidebar" id="sidebar">
-    <!-- Логотип -->
-    <div class="d-flex align-items-center mb-5 px-3">
-        <div style="background: var(--brand-light); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            🚚
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="logo-box">
+                <i class="bi bi-calendar-check-fill"></i>
+            </div>
+            <span class="brand-name">FreightCal <span style="font-weight: 300; opacity: 0.6;">ERP</span></span>
         </div>
-        <span class="fw-bold h5 mb-0" style="color: var(--brand-color);">FreightCal</span>
-    </div>
 
-    <!-- ОСНОВНОЕ МЕНЮ (АВТОМАТИЧЕСКОЕ) -->
-    <div class="nav flex-column h-100">
-        <div class="flex-grow-1">
+        <div class="sidebar-nav">
             {% block sidebar_nav %}
+                <!-- Логическая группировка пунктов -->
                 {% if user.role == 'admin' %}
+                    <div class="nav-section-title">Control Panel</div>
                     <a href="{% url 'admin_users' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_users' %}active{% endif %}">
-                        <span>👥</span> Персонал
+                        <i class="bi bi-people"></i> <span>Управление кадрами</span>
                     </a>
                     <a href="{% url 'admin_logs' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_logs' %}active{% endif %}">
-                        <span>📜</span> Логи системы
+                        <i class="bi bi-shield-lock"></i> <span>Аудит событий</span>
                     </a>
 
                 {% elif user.role == 'logistics' %}
+                    <div class="nav-section-title">Core Operations</div>
                     <a href="{% url 'logistics_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'logistics_dashboard' %}active{% endif %}">
-                        <span>📦</span> Управление заказами
+                        <i class="bi bi-box-seam"></i> <span>Портфель заказов</span>
                     </a>
                     <a href="{% url 'planning_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'planning_dashboard' %}active{% endif %}">
-                        <span>📅</span> Балансировка объемов
+                        <i class="bi bi-calendar-week"></i> <span>Балансировка ОКП</span>
                     </a>
 
                 {% elif user.role == 'transport' %}
+                    <div class="nav-section-title">Fleet Management</div>
                     <a href="{% url 'transport_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'transport_dashboard' %}active{% endif %}">
-                        <span>🚛</span> Управление автопарком
+                        <i class="bi bi-truck"></i> <span>Мониторинг парка</span>
                     </a>
                     <a href="{% url 'transport_schedule' %}" class="nav-link {% if request.resolver_match.url_name == 'transport_schedule' %}active{% endif %}">
-                        <span>📋</span> График рейсов
+                        <i class="bi bi-map"></i> <span>График рейсов</span>
                     </a>
                     <a href="{% url 'transport_maintenance' %}" class="nav-link {% if request.resolver_match.url_name == 'transport_maintenance' %}active{% endif %}">
-                        <span>🛠️</span> Календарь простоев ТС
+                        <i class="bi bi-wrench-adjustable"></i> <span>Сервис и простои</span>
                     </a>
                     <a href="{% url 'transport_drivers' %}" class="nav-link {% if request.resolver_match.url_name == 'transport_drivers' %}active{% endif %}">
-                        <span>👤️</span> Управление водителями
+                        <i class="bi bi-person-badge"></i> <span>Реестр водителей</span>
                     </a>
                 {% endif %}
             {% endblock %}
         </div>
 
-        <!-- НИЖНЯЯ ЧАСТЬ (Личное) -->
-        <div class="mt-auto w-100">
-            <hr style="opacity: 0.1; margin-bottom: 1rem;">
-
-            <!-- Мой профиль -->
-            <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %} mb-1">
+        <div class="sidebar-footer">
+            <a href="{% url 'profile' %}" class="user-profile-btn {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
                 {% if user.avatar %}
                     <img src="{{ user.avatar.url }}" class="nav-avatar">
                 {% else %}
-                    <span>👤</span>
+                    <div class="avatar-placeholder">{{ user.username|first|upper }}</div>
                 {% endif %}
-                <span>Мой профиль</span>
+                <div class="overflow-hidden">
+                    <div class="fw-bold small text-truncate">{{ user.username }}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted);" class="text-uppercase fw-bold">{{ user.get_role_display }}</div>
+                </div>
             </a>
 
-            <!-- Выход -->
-            <a href="{% url 'login' %}" class="nav-link text-danger">
-                <span>🚪</span> <span>Выйти</span>
+            <a href="{% url 'login' %}" class="logout-btn">
+                <i class="bi bi-box-arrow-left"></i> <span>Завершить сессию</span>
             </a>
         </div>
+    </nav>
+
+    <!-- MAIN WRAPPER -->
+    <div class="main-wrapper" id="mainWrapper">
+        <header class="top-header">
+            <button type="button" id="sidebarToggle" title="Свернуть меню">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="ms-4 small fw-semibold text-muted text-uppercase tracking-wider">
+                System Status: <span class="text-success">Operational</span>
+            </div>
+        </header>
+
+        <main class="page-content">
+            {% block content %}{% endblock %}
+        </main>
     </div>
-</nav>
 
-<main class="main-content" id="mainContent">
-    {% block content %}{% endblock %}
-</main>
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const btn = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const wrapper = document.getElementById('mainWrapper');
 
-<script>
-    const btn = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-    const content = document.getElementById('mainContent');
+        btn.onclick = () => {
+            sidebar.classList.toggle('hidden');
+            wrapper.classList.toggle('expanded');
+        };
+    </script>
 
-    btn.onclick = () => {
-        sidebar.classList.toggle('hidden');
-        content.classList.toggle('expanded');
-    };
-</script>
-
-{% block extra_js %}{% endblock %}
+    {% block extra_js %}{% endblock %}
 
 </body>
 </html>

@@ -605,6 +605,25 @@ def auto_plan_for_dates(dates_list):
                     break
 
 
+@login_required
+def route_sheet_print(request, plan_id):
+    # Получаем план, проверяем, что он утвержден
+    plan = get_object_or_404(DeliveryPlan, id=plan_id)
+    # Берем все заказы этого рейса
+    items = PlanItem.objects.filter(plan=plan).select_related('order')
+
+    # Считаем итоги по рейсу
+    total_w = items.aggregate(Sum('order__weight'))['order__weight__sum'] or 0
+    total_v = items.aggregate(Sum('order__volume'))['order__volume__sum'] or 0
+
+    context = {
+        'plan': plan,
+        'items': items,
+        'total_w': total_w,
+        'total_v': total_v,
+        'print_date': timezone.now(),
+    }
+    return render(request, 'main/route_sheet_print.html', context)
 @require_POST
 @login_required
 @require_POST

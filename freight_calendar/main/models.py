@@ -139,7 +139,9 @@ class DeliveryPlan(models.Model):
     class Meta:
         verbose_name = 'План доставки (Рейс)'
         verbose_name_plural = 'Планы доставки (Рейсы)'
-
+    def get_driver_shift(self):
+        """Возвращает смену водителя именно на дату этого плана"""
+        return DriverSchedule.objects.filter(driver=self.driver, date=self.date).first()
     def __str__(self):
         return f"Рейс {self.date}: {self.vehicle.name} ({self.get_status_display()})"
 

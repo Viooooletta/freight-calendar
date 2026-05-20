@@ -3,8 +3,15 @@
 {% block title %}Новый заказ | Freight Calendar{% endblock %}
 
 {% block sidebar_nav %}
-<a href="{% url 'logistics_dashboard' %}" class="nav-link active"><span>📦</span> Управление заказами</a>
-<a href="{% url 'planning_dashboard' %}" class="nav-link "><span>📅</span> Балансировка объемов</a>
+<div class="nav-section-title">Core Operations</div>
+<a href="{% url 'logistics_dashboard' %}"
+   class="nav-link active{% if request.resolver_match.url_name == 'logistics_dashboard' %}active{% endif %}">
+    <i class="bi bi-box-seam"></i> <span>Портфель заказов</span>
+</a>
+<a href="{% url 'planning_dashboard' %}"
+   class="nav-link {% if request.resolver_match.url_name == 'planning_dashboard' %}active{% endif %}">
+    <i class="bi bi-calendar-week"></i> <span>Балансировка ОКП</span>
+</a>
 {% endblock %}
 
 {% block extra_css %}

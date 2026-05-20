@@ -1,275 +1,270 @@
 {% extends 'main/base_dashboard.html' %}
 
+{% block title %}Управление заказами | FreightCal ERP{% endblock %}
+
 {% block extra_css %}
 <style>
-    .stats-card {
-        background: white;
-        border-radius: 1.5rem;
-        padding: 1.5rem;
-        border: 1px solid #eee;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Метрики */
+    .metric-card {
+        background: #ffffff;
+        border: 1px solid var(--glass-border);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
-
-    .stats-card:hover {
-        border-color: var(--brand-color);
-        box-shadow: 0 10px 30px rgba(146, 68, 122, 0.08);
-        transform: translateY(-3px);
-    }
-
-    .total-card {
-        background: var(--brand-color);
-        color: white;
-        border-radius: 3rem;
-    }
-
-    .table-container {
-        background: white;
-        border-radius: 1.5rem;
-        padding: 1.5rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-    }
-
-    /* Логика переключения режимов */
-    .edit-mode {
-        display: none !important;
-    }
-
-    .editing .view-mode {
-        display: none !important;
-    }
-
-    .editing .edit-mode {
-        display: inline-block !important;
-    }
-
-    /* Стили для инпутов внутри таблицы */
-    .form-control-sm-custom {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.85rem;
-        border-radius: 0.5rem;
-        border: 1px solid #ddd;
-        width: 100%;
-    }
-
-    .error-border {
-        border: 2px solid #ff4d4d !important;
-    }
-
-    /* Статусы (цвета) */
-    .status-badge {
-        padding: 0.4rem 0.8rem;
-        border-radius: 2rem;
-        font-weight: 600;
-        font-size: 0.75rem;
-    }
-
-    .bg-pending {
-        background: #fff3cd;
-        color: #856404;
-    }
-
-    .bg-planned {
-        background: #d1ecf1;
-        color: #0c5460;
-    }
-
-    .bg-shipped {
-        background: #cce5ff;
-        color: #004085;
-    }
-
-    .bg-delivered {
-        background: #d4edda;
-        color: #155724;
-    }
-
-    /* Модалка удаления */
-    #deleteModal {
-        display: none;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 2rem;
-        border-radius: 1.5rem;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
-        z-index: 2000;
-        text-align: center;
-        width: 350px;
-    }
-
-    #modalOverlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(4px);
-        z-index: 1999;
-    }
-
-    .btn-action {
-        background: linear-gradient(135deg, var(--brand-color), #7a3865);
-        color: white !important;
-        border-radius: 1.2rem;
-        padding: 0.8rem 2rem;
+    .metric-label {
+        font-size: 0.7rem;
         font-weight: 700;
-        text-decoration: none;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+    }
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-main);
+        line-height: 1;
+    }
+
+    /* Таблица */
+    .data-table-container {
+        background: #ffffff;
+        border: 1px solid var(--glass-border);
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    .table thead th {
+        background: #f8fafc;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        padding: 1rem;
+        border-bottom: 1px solid var(--glass-border);
+    }
+    .table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.9rem;
+    }
+
+    /* Статусы в стиле ERP */
+    .status-pill {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.35rem 0.75rem;
+        border-radius: 6px;
         display: inline-flex;
         align-items: center;
-        gap: 10px;
-        border: none;
-        transition: all 0.3s ease;
+        gap: 6px;
     }
+    .status-pending { background: #fffbeb; color: #9a3412; border: 1px solid #fed7aa; }
+    .status-planned { background: #f0f9ff; color: #075985; border: 1px solid #bae6fd; }
+    .status-shipped { background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe; }
+    .status-delivered { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .status-canceled { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
-    .btn-action:hover {
-        transform: translateY(-2px);
-        opacity: 0.9;
+    /* Режим редактирования */
+    .row-editing { background-color: #fffdf5; }
+    .edit-input {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+        width: 100%;
+        transition: border-color 0.2s;
+    }
+    .edit-input:focus {
+        outline: none;
+        border-color: var(--brand-color);
+        box-shadow: 0 0 0 2px rgba(146, 68, 122, 0.1);
+    }
+    .editing-only { display: none !important; }
+    .tr-edit .editing-only { display: inline-flex !important; }
+    .tr-edit .view-only { display: none !important; }
+
+    /* Кнопки действий */
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        color: var(--text-muted);
+        transition: all 0.2s;
+    }
+    .btn-icon:hover {
+        background: var(--brand-light);
+        color: var(--brand-color);
+        border-color: var(--brand-color);
+    }
+    .btn-icon-danger:hover {
+        background: #fef2f2;
+        color: #ef4444;
+        border-color: #fecaca;
     }
 </style>
 {% endblock %}
 
-
 {% block content %}
-<!-- Модалки -->
-<div id="modalOverlay" onclick="closeDeleteModal()"></div>
-<div id="deleteModal">
-    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-    <h4 class="fw-bold">Удалить заказ?</h4>
-    <p id="modalText" class="text-muted small">Это действие нельзя будет отменить.</p>
-    <div class="d-flex gap-2 justify-content-center mt-4">
-        <button onclick="closeDeleteModal()" class="btn btn-light" style="border-radius: 0.8rem;">Отмена</button>
-        <button id="confirmDeleteBtn" class="btn btn-danger" style="border-radius: 0.8rem;">Да, удалить</button>
-    </div>
-</div>
-
-<!-- Заголовок -->
-    <div>
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <span class="badge mb-2"
-                  style="background: var(--brand-light); color: var(--brand-color); font-weight: 700;">ORDERS DEPT</span>
-            <h1 class="display-6 fw-bold mb-0">Управление заказами</h1>
+            <h1 class="h3 fw-bold mb-1">Управление заказами</h1>
+            <p class="text-muted small mb-0">Модуль обработки и контроля операционного портфеля заказов</p>
         </div>
-        <p class="text-muted">Логист: {{ user.username }}</p>
+        <a href="{% url 'order_create' %}" class="btn btn-primary d-flex align-items-center gap-2 px-4 py-2" style="background: var(--brand-color); border: none; border-radius: 10px;">
+            <i class="bi bi-plus-lg"></i>
+            <span class="fw-bold">Создать заказ</span>
+        </a>
     </div>
-    <a href="{% url 'order_create' %}" class="btn-action shadow-sm">+ Создать заказ</a>
-</div>
 
-<!-- Статистика -->
-<div class="row g-3 mb-5">
-    <div class="col-md-2">
-        <div class="stats-card text-center"><small class="text-muted fw-bold">ОЖИДАЮТ</small>
-            <h3 class="fw-bold mt-1 text-warning">{{ count_pending }}</h3></div>
-    </div>
-    <div class="col-md-2">
-        <div class="stats-card text-center"><small class="text-muted fw-bold">ПЛАН</small>
-            <h3 class="fw-bold mt-1 text-info">{{ count_planned }}</h3></div>
-    </div>
-    <div class="col-md-2">
-        <div class="stats-card text-center"><small class="text-muted fw-bold">В ПУТИ</small>
-            <h3 class="fw-bold mt-1 text-primary">{{ count_in_transit }}</h3></div>
-    </div>
-    <div class="col-md-2">
-        <div class="stats-card text-center"><small class="text-muted fw-bold">ГОТОВО</small>
-            <h3 class="fw-bold mt-1 text-success">{{ count_delivered }}</h3></div>
-    </div>
-    <div class="col-md-4">
-        <div class="stats-card total-card d-flex align-items-center justify-content-between">
-            <div><small class="fw-bold opacity-75">ВСЕГО В БАЗЕ</small>
-                <div class="h2 fw-bold mb-0">{{ total_orders }}</div>
+    <!-- Stats Bar -->
+    <div class="row g-3 mb-4">
+        <div class="col-md">
+            <div class="metric-card shadow-sm">
+                <span class="metric-label">Ожидают</span>
+                <span class="metric-value" style="color: #d97706;">{{ count_pending }}</span>
             </div>
-            <div style="font-size: 2rem; opacity: 0.3;">📊</div>
+        </div>
+        <div class="col-md">
+            <div class="metric-card shadow-sm">
+                <span class="metric-label">В плане</span>
+                <span class="metric-value" style="color: #0284c7;">{{ count_planned }}</span>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="metric-card shadow-sm">
+                <span class="metric-label">В пути</span>
+                <span class="metric-value" style="color: #7c3aed;">{{ count_in_transit }}</span>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="metric-card shadow-sm">
+                <span class="metric-label">Готово</span>
+                <span class="metric-value" style="color: #16a34a;">{{ count_delivered }}</span>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card shadow-sm bg-dark">
+                <span class="metric-label text-white-50">Всего в базе</span>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="metric-value text-white">{{ total_orders }}</span>
+                    <i class="bi bi-database text-white-50 fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="data-table-container shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th width="80">ID</th>
+                        <th>Адрес доставки</th>
+                        <th width="200">Габариты (Объем/Вес)</th>
+                        <th width="180">Периодичность</th>
+                        <th width="160">Статус</th>
+                        <th width="100" class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr id="row-{{ order.id }}" class="transition-all">
+                        <td class="text-muted fw-medium small">#{{ order.id }}</td>
+                        <td>
+                            <div class="view-only fw-bold text-dark">{{ order.address }}</div>
+                            <input type="text" id="addr-{{ order.id }}" class="edit-input editing-only" value="{{ order.address }}">
+                        </td>
+                        <td>
+                            <div class="view-only d-flex gap-2">
+                                <span class="small fw-semibold text-muted"><i class="bi bi-box"></i> {{ order.volume }} м³</span>
+                                <span class="small fw-semibold text-muted"><i class="bi bi-speedometer2"></i> {{ order.weight }} кг</span>
+                            </div>
+                            <div class="editing-only d-flex gap-2">
+                                <input type="number" step="0.1" id="vol-{{ order.id }}" class="edit-input" value="{{ order.volume|stringformat:'.1f' }}">
+                                <input type="number" step="0.1" id="wei-{{ order.id }}" class="edit-input" value="{{ order.weight|stringformat:'.1f' }}">
+                            </div>
+                        </td>
+                        <td>
+                            <div class="view-only">
+                                {% if order.delivery_type == 'urgent' %}
+                                    <span class="text-danger small fw-bold text-uppercase"><i class="bi bi-lightning-fill"></i> Срочно</span>
+                                    <div class="text-muted x-small">{{ order.delivery_data|date:"d.m.Y" }}</div>
+                                {% else %}
+                                    <span class="text-primary small fw-bold text-uppercase"><i class="bi bi-arrow-repeat"></i> {{ order.get_frequency_display }}</span>
+                                    <div class="text-muted x-small">Старт: {{ order.delivery_data|date:"d.m.Y" }}</div>
+                                {% endif %}
+                            </div>
+                            <input type="date" id="date-{{ order.id }}" class="edit-input editing-only" value="{{ order.delivery_data|date:'Y-m-d' }}">
+                        </td>
+                        <td>
+                            <div class="view-only status-pill status-{{ order.status }}">
+                                <i class="bi bi-circle-fill" style="font-size: 0.4rem;"></i>
+                                {{ order.get_status_display }}
+                            </div>
+                            <select id="stat-{{ order.id }}" class="edit-input editing-only">
+                                <option value="{{ order.status }}">{{ order.get_status_display }}</option>
+                                {% if order.status != 'canceled' %}<option value="canceled">Отменен</option>{% endif %}
+                            </select>
+                        </td>
+                        <td class="text-end">
+                            <div class="view-only d-flex justify-content-end gap-1">
+                                <button onclick="toggleEdit('{{ order.id }}')" class="btn-icon" title="Редактировать"><i class="bi bi-pencil-square"></i></button>
+                                <button onclick="confirmDelete('{{ order.id }}')" class="btn-icon btn-icon-danger" title="Удалить"><i class="bi bi-trash"></i></button>
+                            </div>
+                            <div class="editing-only d-flex justify-content-end gap-1">
+                                <button onclick="saveInline('{{ order.id }}')" class="btn-icon" style="color: #16a34a; border-color: #bbf7d0;"><i class="bi bi-check-lg"></i></button>
+                                <button onclick="toggleEdit('{{ order.id }}')" class="btn-icon" style="color: #ef4444; border-color: #fecaca;"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<!-- Таблица -->
-<div class="table-container">
-    <table class="table align-middle" id="ordersTable">
-        <thead>
-        <tr class="text-muted small uppercase">
-            <th width="60">ID</th>
-            <th>Адрес</th>
-            <th width="180">Объем / Вес</th>
-            <th width="160">Период</th>
-            <th width="150">Статус</th>
-            <th width="120" class="text-end">Действия</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for order in orders %}
-        <tr id="row-{{ order.id }}">
-            <td>#{{ order.id }}</td>
-
-            <td>
-                <span class="view-mode fw-bold">{{ order.address }}</span>
-                <input type="text" id="addr-{{ order.id }}" class="edit-mode form-control-sm-custom"
-                       value="{{ order.address }}">
-            </td>
-
-            <td>
-                <div class="view-mode">
-                    <span class="badge bg-light text-dark">{{ order.volume }} м³</span>
-                    <span class="badge bg-light text-dark">{{ order.weight }} кг</span>
+<!-- Модалка удаления в стиле Bootstrap 5 -->
+<div class="modal fade" id="deleteModalNative" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="border-radius: 1.25rem;">
+            <div class="modal-body p-4 text-center">
+                <div class="text-danger mb-3"><i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i></div>
+                <h5 class="fw-bold">Удалить заказ?</h5>
+                <p class="text-muted small">Данные о заказе будут удалены из системы безвозвратно.</p>
+                <div class="d-grid gap-2 mt-4">
+                    <button id="confirmDeleteBtn" class="btn btn-danger py-2 fw-bold" style="border-radius: 10px;">Подтвердить</button>
+                    <button type="button" class="btn btn-light py-2 text-muted fw-bold" data-bs-dismiss="modal">Отмена</button>
                 </div>
-                <div class="edit-mode d-flex gap-1">
-                    <input type="number" step="0.1" id="vol-{{ order.id }}" class="form-control-sm-custom"
-                           value="{{ order.volume|stringformat:'.1f' }}" style="width: 70px;">
-                    <input type="number" step="0.1" id="wei-{{ order.id }}" class="form-control-sm-custom"
-                           value="{{ order.weight|stringformat:'.1f' }}" style="width: 70px;">
-                </div>
-            </td>
-
-            <td>
-                <div class="view-mode">
-                    {% if order.delivery_type == 'urgent' %}
-                    <span class="text-danger small fw-bold">🔥 Срочно</span><br>
-                    <small>{{ order.delivery_data|date:"d.m.Y" }}</small>
-                    {% else %}
-                    <span class="text-primary small fw-bold">🔄 {{ order.get_frequency_display }}</span><br>
-                    <small>С {{ order.delivery_data|date:"d.m" }}</small>
-                    {% endif %}
-                </div>
-                <input type="date" id="date-{{ order.id }}" class="edit-mode form-control-sm-custom"
-                       value="{{ order.delivery_data|date:'Y-m-d' }}">
-            </td>
-
-            <td>
-                <span class="view-mode status-badge bg-{{ order.status }}">{{ order.get_status_display }}</span>
-                <select id="stat-{{ order.id }}" class="edit-mode form-control-sm-custom">
-                    <!-- Только текущий статус и Отмена -->
-                    <option value="{{ order.status }}" selected>{{ order.get_status_display }}</option>
-                    {% if order.status != 'canceled' %}
-                    <option value="canceled">Отменен</option>
-                    {% endif %}
-                </select>
-            </td>
-
-            <td class="text-end">
-                <div class="view-mode">
-                    <button onclick="toggleEdit('{{ order.id }}')" class="btn btn-sm btn-outline-primary">✏️</button>
-                    <button onclick="confirmDelete('{{ order.id }}')" class="btn btn-sm btn-outline-danger">🗑️</button>
-                </div>
-                <div class="edit-mode d-flex gap-1 justify-content-end">
-                    <button onclick="saveInline('{{ order.id }}')" class="btn btn-sm btn-success">✅</button>
-                </div>
-            </td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+            </div>
+        </div>
+    </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
 <script>
-    // Переключение строки в режим редактирования
+    // Переключение режима
     function toggleEdit(id) {
-        document.getElementById(`row-${id}`).classList.toggle('editing');
+        const row = document.getElementById(`row-${id}`);
+        row.classList.toggle('tr-edit');
+        row.classList.toggle('row-editing');
     }
 
-    // Сохранение изменений через API
+    // Сохранение
     async function saveInline(id) {
         const data = {
             address: document.getElementById(`addr-${id}`).value,
@@ -278,12 +273,6 @@
             delivery_data: document.getElementById(`date-${id}`).value,
             status: document.getElementById(`stat-${id}`).value
         };
-
-        // Простейшая валидация на стороне клиента
-        if (!data.address || !data.volume || !data.weight || !data.delivery_data) {
-            alert("Пожалуйста, заполните все поля");
-            return;
-        }
 
         try {
             const response = await fetch(`/logistics/management/orders/${id}/update-inline/`, {
@@ -294,49 +283,36 @@
                 },
                 body: JSON.stringify(data)
             });
-
-            const result = await response.json();
-
-            if (response.ok && result.status === 'success') {
-                // Вместо простого reload() можно обновить текст в ячейках через JS,
-                // но reload гарантирует правильное форматирование дат и бейджей от Django.
-                location.reload();
-            } else {
-                alert("Ошибка при сохранении: " + (result.message || "Неизвестная ошибка"));
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Сетевая ошибка");
-        }
-    }
-
-    // Удаление
-    function confirmDelete(id) {
-        document.getElementById('modalText').innerText = `Заказ ID #${id} будет удален из базы навсегда.`;
-        document.getElementById('confirmDeleteBtn').onclick = () => performDelete(id);
-        document.getElementById('modalOverlay').style.display = 'block';
-        document.getElementById('deleteModal').style.display = 'block';
-    }
-
-    function closeDeleteModal() {
-        document.getElementById('modalOverlay').style.display = 'none';
-        document.getElementById('deleteModal').style.display = 'none';
-    }
-
-    async function performDelete(id) {
-        try {
-            const response = await fetch(`/logistics/management/orders/${id}/delete/`, {
-                method: 'POST',
-                headers: {'X-CSRFToken': '{{ csrf_token }}'}
-            });
             if (response.ok) {
                 location.reload();
             } else {
-                alert("Не удалось удалить заказ.");
+                alert("Ошибка при сохранении");
             }
         } catch (e) {
-            alert("Ошибка соединения.");
+            alert("Ошибка сети");
         }
     }
+
+    // Удаление через нативный Bootstrap Modal
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModalNative'));
+    let idToDelete = null;
+
+    function confirmDelete(id) {
+        idToDelete = id;
+        deleteModal.show();
+    }
+
+    document.getElementById('confirmDeleteBtn').onclick = async () => {
+        if (!idToDelete) return;
+        try {
+            const response = await fetch(`/logistics/management/orders/${idToDelete}/delete/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'}
+            });
+            if (response.ok) location.reload();
+        } catch (e) {
+            alert("Ошибка соединения");
+        }
+    };
 </script>
 {% endblock %}

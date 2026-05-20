@@ -87,24 +87,7 @@
     }
 </style>
 {% endblock %}
-{% block sidebar_nav %}
-<a href="{% url 'transport_dashboard' %}"
-   class="nav-link {% if request.resolver_match.url_name == 'transport_dashboard' %}active{% endif %}">
-    <span>🚛</span> Управление автопарком
-</a>
-<a href="{% url 'transport_schedule' %}"
-   class="nav-link {% if request.resolver_match.url_name == 'transport_schedule' %}active{% endif %}">
-    <span>📋</span> График рейсов
-</a>
-<a href="{% url 'transport_maintenance' %}"
-   class="nav-link {% if request.resolver_match.url_name == 'transport_maintenance' %}active{% endif %}">
-    <span>🛠️</span> Календарь простоев ТС
-</a>
-<a href="{% url 'transport_drivers' %}"
-   class="nav-link {% if request.resolver_match.url_name == 'transport_drivers' %}active{% endif %}">
-    <span>👤</span> Управление водителями
-</a>
-{% endblock %}
+
 {% block content %}
 {% csrf_token %}
 <div class="container-fluid mt-4">
