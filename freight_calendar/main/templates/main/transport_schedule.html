@@ -177,52 +177,46 @@
 
         // Глобальная функция обновления статуса
         window.updateStatus = function (orderId, newStatus) {
-            const row = document.getElementById(`order-row-${orderId}`);
-            if (row) row.classList.add('status-changing');
+    const row = document.getElementById(`order-row-${orderId}`);
+    if (row) row.classList.add('status-changing');
 
-            // Более надежный способ получения токена
-            const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-            fetch(`/api/order/${orderId}/status/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': token // Используем полученный токен
-                },
-                body: JSON.stringify({status: newStatus})
-            })
-                .then(res => {
-                    if (!res.ok) {
-                        // Если сервер ответил ошибкой (403, 404, 500)
-                        return res.text().then(text => {
-                            throw new Error(`Сервер ответил ${res.status}: ${text}`)
-                        });
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    if (data.status === 'success') {
-                        const statusCell = document.getElementById(`status-cell-${orderId}`);
-                        const btnGroup = document.getElementById(`btn-group-${orderId}`);
+    // ИСПРАВЛЕННЫЙ URL: теперь совпадает с urls.py
+    fetch(`/api/order/${orderId}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': token
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(res => {
+        if (!res.ok) return res.text().then(text => { throw new Error(text) });
+        return res.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            const statusCell = document.getElementById(`status-cell-${orderId}`);
+            const btnGroup = document.getElementById(`btn-group-${orderId}`);
 
-                        let badgeClass = newStatus === 'delivered' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
-                        let statusText = newStatus === 'delivered' ? '✓ Доставлен' : '✕ Отменен';
+            let badgeClass = newStatus === 'delivered' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
+            let statusText = newStatus === 'delivered' ? '✓ Доставлен' : '✕ Отменен';
 
-                        statusCell.innerHTML = `<span class="badge ${badgeClass} px-3 py-2 rounded-pill border">${statusText}</span>`;
-                        if (btnGroup) btnGroup.remove();
+            statusCell.innerHTML = `<span class="badge ${badgeClass} px-3 py-2 rounded-pill border">${statusText}</span>`;
+            if (btnGroup) btnGroup.remove();
 
-                        row.classList.remove('status-changing');
-                        row.classList.add('status-updated');
-                    }
-                })
-                .catch(err => {
-                    console.error('Детали ошибки:', err);
-                    alert('Ошибка при обновлении: ' + err.message); // Теперь покажет реальную ошибку
-                })
-                .finally(() => {
-                    if (row) row.classList.remove('status-changing');
-                });
-        };
+            row.classList.remove('status-changing');
+            row.classList.add('status-updated');
+        }
+    })
+    .catch(err => {
+        alert('Ошибка при обновлении: ' + err.message);
+    })
+    .finally(() => {
+        if (row) row.classList.remove('status-changing');
+    });
+};
     });
 </script>
 {% endblock %}

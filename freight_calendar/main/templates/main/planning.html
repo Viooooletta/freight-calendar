@@ -258,34 +258,54 @@
 
     // 2. ЛОГИКА "РАКЕТЫ" (🚀) - ПЕРЕНОС НА ВЫБРАННУЮ ДАТУ
     function rescheduleOrder(orderId) {
-        const input = document.getElementById(`reschedule-${orderId}`);
-        const newDate = input.value;
+    const input = document.getElementById(`reschedule-${orderId}`);
+    const newDate = input.value;
 
-        if (!newDate) {
-            alert("Пожалуйста, выберите дату переноса вручную или с помощью 🪄");
-            return;
-        }
-
-        fetch(`/api/order/${orderId}/update/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                new_delivery_data: newDate // Должно совпадать с ключом во views.py
-            })
-        })
-            .then(r => r.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    location.reload(); // Перезагружаем для обновления календаря и очередей
-                } else {
-                    alert("Ошибка при переносе: " + data.message);
-                }
-            })
-            .catch(error => alert("Ошибка соединения с сервером"));
+    if (!newDate) {
+        alert("Пожалуйста, выберите дату");
+        return;
     }
+
+    const btn = window.event.currentTarget;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    btn.disabled = true;
+
+    // Пытаемся найти CSRF-токен на странице
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch(`/api/order/${orderId}/update/`, { // ПУТЬ ДОЛЖЕН СОВПАДАТЬ С URLS.PY
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            new_delivery_data: newDate // Ключ должен совпадать с тем, что во views.py
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload(); // Успех - обновляем страницу
+        } else {
+            alert("Ошибка: " + data.message);
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Детали ошибки:', error);
+        alert("Ошибка соединения. Проверьте консоль браузера (F12).");
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+    });
+}
 
     // 3. УТВЕРЖДЕНИЕ ПЛАНА ДНЯ (✅)
     function approveDayPlan(dateStr) {

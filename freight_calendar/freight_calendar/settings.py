@@ -121,3 +121,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'violetta.karavay@gmail.com' # Твоя почта Gmail
 EMAIL_HOST_PASSWORD = 'lbob odbo jcgx dwre' # Код из 16 букв (Пароль приложения Google)
 DEFAULT_FROM_EMAIL = 'Freight Calendar <violetta.karavay@gmail.com>'
+MEDIA_URL = '/media/'
+
+# Путь в папке проекта (где физически лежат файлы)
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -27,7 +27,59 @@ from django.contrib import messages
 from django.utils.crypto import get_random_string
 from django.template.loader import render_to_string
 
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 
+
+@login_required
+def profile_view(request):
+    # Личная статистика для дашборда профиля
+    personal_logs = ActionLog.objects.filter(user=request.user).order_by('-timestamp')
+
+    context = {
+        'logs': personal_logs[:15],  # Последние 15 действий
+        'total_actions': personal_logs.count(),
+        'actions_today': personal_logs.filter(timestamp__date=timezone.now().date()).count(),
+    }
+    return render(request, 'main/profile.html', context)
+
+
+@login_required
+@require_POST
+def profile_update_ajax(request):
+    user = request.user
+    user.username = request.POST.get('username', user.username)
+    user.email = request.POST.get('email', user.email)
+
+    if 'avatar' in request.FILES:
+        user.avatar = request.FILES['avatar']
+
+    user.save()
+    log_action(user, "Профиль", "Обновлены личные данные и фото")
+    return JsonResponse({'status': 'success'})
+
+
+@login_required
+@require_POST
+def profile_change_password(request):
+    data = json.loads(request.body)
+    new_pass = data.get('password')
+    if new_pass:
+        request.user.set_password(new_pass)
+        request.user.save()
+        update_session_auth_hash(request, request.user)  # Чтобы не выкинуло из системы
+        log_action(request.user, "Безопасность", "Смена пароля через личный кабинет")
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error'}, status=400)
+
+
+@login_required
+@require_POST
+def profile_delete_account(request):
+    user = request.user
+    log_action(user, "Удаление", "Аккаунт удален пользователем")
+    user.delete()
+    return JsonResponse({'status': 'success'})
 def password_reset_request(request):
     if request.method == "POST":
         email = request.POST.get('email')
@@ -165,75 +217,6 @@ def check_order_fits_day(order, target_date):
     ).exists()
 
     return can_physically_fit
-
-
-@transaction.atomic
-def auto_plan_for_dates(dates_list):
-    """
-    АЛГОРИТМ БАЛАНСИРОВКИ (ОКП):
-    Распределяет заказы, учитывая 'Бутылочное горлышко' (min от машин и водителей).
-    Устойчив к дубликатам заказов в БД.
-    """
-    unique_dates = sorted(list(set(dates_list)))
-
-    for target_date in unique_dates:
-        # 1. Сбрасываем старые черновики планов и статус заказов для перепланирования на этот день
-        DeliveryPlan.objects.filter(date=target_date, status=DeliveryPlan.Status.DRAFT).delete()
-
-        # Заказы, которые были PLANNED на эту дату, возвращаем в PENDING для перерасчета
-        # Это важно для функции "ракета", чтобы заказ мог быть перенесен
-        Order.objects.filter(planitem__plan__date=target_date, planitem__plan__status=DeliveryPlan.Status.DRAFT).update(
-            status=Order.Status.PENDING)
-
-        # 2. Заказы на день (от тяжелых к легким), которые все еще "Ожидают"
-        day_orders = Order.objects.filter(delivery_data=target_date, status=Order.Status.PENDING).order_by('-weight',
-                                                                                                           '-volume')
-        if not day_orders.exists():
-            continue
-
-        # 3. Машины (не в ремонте)
-        available_vehicles = list(Vehicle.objects.exclude(
-            vehiclemaintenance__start_date__lte=target_date,
-            vehiclemaintenance__end_date__gte=target_date
-        ).order_by('-capacity_weight'))
-
-        # 4. Водители (есть смена и нет больничного)
-        available_drivers = [d for d in Driver.objects.all() if d.is_available(target_date)]
-
-        # 5. Лимит рейсов = сколько у нас полных экипажей (бутылочное горлышко)
-        num_trips = min(len(available_vehicles), len(available_drivers))
-
-        fleet_pool = []
-        for i in range(num_trips):
-            fleet_pool.append({
-                'vehicle': available_vehicles[i],
-                'driver': available_drivers[i],
-                'rem_w': available_vehicles[i].capacity_weight,
-                'rem_v': available_vehicles[i].capacity_volume,
-                'plan': None  # Будущий план для этого экипажа
-            })
-
-        # 6. Распределение Best Fit
-        for order in day_orders:
-            assigned = False
-            for trip in fleet_pool:
-                if trip['rem_w'] >= order.weight and trip['rem_v'] >= order.volume:
-                    if not trip['plan']:
-                        trip['plan'] = DeliveryPlan.objects.create(
-                            date=target_date, vehicle=trip['vehicle'],
-                            driver=trip['driver'], status=DeliveryPlan.Status.DRAFT
-                        )
-                    PlanItem.objects.create(plan=trip['plan'], order=order)
-                    trip['rem_w'] -= order.weight
-                    trip['rem_v'] -= order.volume
-                    order.status = Order.Status.PLANNED
-                    order.save()
-                    assigned = True
-                    break
-            # Если заказ не удалось распределить, он остается PENDING и отображается в красном дне
-            if not assigned:
-                # Статус уже PENDING, так что ничего менять не нужно, просто он не попал в план
-                pass
 
 
 # ==========================================
@@ -560,23 +543,112 @@ def plan_detail_api(request, date_str):
     return JsonResponse({'html': html})
 
 
+@transaction.atomic
+def auto_plan_for_dates(dates_list):
+    """
+    УЛУЧШЕННЫЙ АЛГОРИТМ ОКП:
+    Равномерно распределяет заказы между доступными экипажами (Машина + Водитель).
+    """
+    unique_dates = sorted(list(set(dates_list)))
+
+    for target_date in unique_dates:
+        if isinstance(target_date, str):
+            target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
+
+        # 1. Сброс черновиков
+        DeliveryPlan.objects.filter(date=target_date, status=DeliveryPlan.Status.DRAFT).delete()
+        Order.objects.filter(delivery_data=target_date, status=Order.Status.PLANNED).update(status=Order.Status.PENDING)
+
+        # 2. Получаем заказы
+        day_orders = Order.objects.filter(delivery_data=target_date, status=Order.Status.PENDING).order_by('-weight')
+        if not day_orders.exists(): continue
+
+        # 3. Ресурсы: исправные машины и водители со сменами
+        available_vehicles = list(Vehicle.objects.exclude(
+            vehiclemaintenance__start_date__lte=target_date,
+            vehiclemaintenance__end_date__gte=target_date
+        ).order_by('-capacity_weight'))
+
+        available_drivers = [d for d in Driver.objects.all() if d.is_available(target_date)]
+
+        # Лимит экипажей на сегодня
+        num_crews = min(len(available_vehicles), len(available_drivers))
+        if num_crews == 0: continue
+
+        # Создаем пул активных рейсов
+        crews = []
+        for i in range(num_crews):
+            # Для каждого экипажа сразу создаем план
+            plan = DeliveryPlan.objects.create(
+                date=target_date,
+                vehicle=available_vehicles[i],
+                driver=available_drivers[i],
+                status=DeliveryPlan.Status.DRAFT
+            )
+            crews.append({
+                'plan': plan,
+                'rem_w': available_vehicles[i].capacity_weight,
+                'rem_v': available_vehicles[i].capacity_volume
+            })
+
+        # 4. Распределение (Best Fit)
+        for order in day_orders:
+            # Ищем машину, где больше всего свободного места в данный момент (для равномерности)
+            crews.sort(key=lambda x: x['rem_w'], reverse=True)
+            for crew in crews:
+                if crew['rem_w'] >= order.weight and crew['rem_v'] >= order.volume:
+                    PlanItem.objects.create(plan=crew['plan'], order=order)
+                    crew['rem_w'] -= order.weight
+                    crew['rem_v'] -= order.volume
+                    order.status = Order.Status.PLANNED
+                    order.save()
+                    break
+
+
+@require_POST
+@login_required
 @require_POST
 def update_order_status_ajax(request, pk):
+    """
+    Универсальное API для смены статуса ИЛИ переноса даты заказа.
+    """
     try:
         order = get_object_or_404(Order, pk=pk)
         data = json.loads(request.body)
-        new_status = data.get('status')
 
-        # Список разрешенных статусов из твоей модели Order
-        if new_status in [choice[0] for choice in Order.Status.choices]:
-            order.status = new_status
-            order.save()
-            log_action(request.user, "Статус заказа", f"Заказ №{order.id} изменен на {new_status}")
-            return JsonResponse({'status': 'success'})
-        return JsonResponse({'status': 'error', 'message': 'Недопустимый статус'}, status=400)
+        status_to_set = data.get('status')
+        new_date_str = data.get('new_delivery_data')
+
+        dates_to_replan = {order.delivery_data}
+
+        # ЛОГИКА РАКЕТЫ (Перенос даты)
+        if new_date_str:
+            new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+            if new_date != order.delivery_data:
+                # Удаляем из старого плана (освобождаем место)
+                PlanItem.objects.filter(order=order).delete()
+                order.delivery_data = new_date
+                order.status = Order.Status.PENDING
+                dates_to_replan.add(new_date)
+                log_action(request.user, "Перенос", f"Заказ {order.id} перенесен на {new_date_str}")
+
+        # ЛОГИКА ГАЛОЧЕК (Смена статуса)
+        if status_to_set:
+            valid_statuses = [c[0] for c in Order.Status.choices]
+            if status_to_set in valid_statuses:
+                order.status = status_to_set
+                log_action(request.user, "Статус", f"Заказ {order.id} -> {status_to_set}")
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Недопустимый статус'}, status=400)
+
+        order.save()
+
+        # Если был перенос или отмена, пересчитываем баланс
+        auto_plan_for_dates(list(dates_to_replan))
+
+        return JsonResponse({'status': 'success'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
 
 # ==========================================
 # 5. ТРАНСПОРТНЫЙ ОТДЕЛ: АВТОПАРК И ТО

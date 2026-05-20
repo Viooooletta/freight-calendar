@@ -1,0 +1,134 @@
+{% extends 'main/base_dashboard.html' %}
+
+{% block title %}Мой профиль | Freight Calendar{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row g-4">
+        <!-- ЛЕВАЯ КОЛОНКА: Настройки -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm p-4 text-center" style="border-radius: 25px;">
+                <div class="position-relative d-inline-block mx-auto mb-3">
+                    <div class="avatar-preview shadow" style="width: 120px; height: 120px; border-radius: 35px; overflow: hidden; background: #f8f9fa;">
+                        {% if user.avatar %}
+                            <img src="{{ user.avatar.url }}" id="avatar-img" class="w-100 h-100 object-fit-cover">
+                        {% else %}
+                            <div class="h-100 d-flex align-items-center justify-content-center fs-1">👤</div>
+                        {% endif %}
+                    </div>
+                    <label for="avatar-input" class="btn btn-sm btn-dark position-absolute bottom-0 end-0 rounded-circle shadow">
+                        📸
+                    </label>
+                    <input type="file" id="avatar-input" hidden accept="image/*">
+                </div>
+                
+                <h4 class="fw-bold mb-0">{{ user.username }}</h4>
+                <p class="text-muted small mb-4">{{ user.get_role_display }}</p>
+
+                <div class="row g-2 mb-4">
+                    <div class="col-6">
+                        <div class="bg-light p-3 rounded-4">
+                            <div class="h4 fw-bold mb-0">{{ total_actions }}</div>
+                            <div class="text-muted small">Всего действий</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-light p-3 rounded-4">
+                            <div class="h4 fw-bold mb-0 text-success">{{ actions_today }}</div>
+                            <div class="text-muted small">За сегодня</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vstack gap-3 text-start">
+                    <div>
+                        <label class="small fw-bold text-muted text-uppercase mb-1">Имя в системе</label>
+                        <input type="text" id="prof-name" class="form-control border-0 bg-light p-3 rounded-3" value="{{ user.username }}">
+                    </div>
+                    <div>
+                        <label class="small fw-bold text-muted text-uppercase mb-1">Email</label>
+                        <input type="email" id="prof-email" class="form-control border-0 bg-light p-3 rounded-3" value="{{ user.email }}">
+                    </div>
+                    <button class="btn btn-primary py-3 fw-bold rounded-4 shadow-sm" onclick="updateProfile()" style="background: var(--brand-color); border: none;">
+                        💾 Сохранить изменения
+                    </button>
+                    
+                    <hr>
+                    
+                    <button class="btn btn-light py-3 fw-bold rounded-4" data-bs-toggle="collapse" data-bs-target="#pass-change">
+                        🔑 Сменить пароль
+                    </button>
+                    
+                    <div class="collapse" id="pass-change">
+                        <div class="p-3 bg-light rounded-4 mt-2">
+                            <input type="password" id="new-pass" class="form-control mb-2" placeholder="Новый пароль">
+                            <button class="btn btn-dark w-100 btn-sm" onclick="changePassword()">Обновить пароль</button>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-outline-danger py-2 fw-bold border-0 mt-5" onclick="deleteAccount()">
+                        Удалить мой аккаунт
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА: Лента событий -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 25px;">
+                <h5 class="fw-bold mb-4">Моя активность в системе</h5>
+                {% include 'main/user_history_fragment.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateProfile() {
+    let formData = new FormData();
+    formData.append('username', document.getElementById('prof-name').value);
+    formData.append('email', document.getElementById('prof-email').value);
+    const avatarFile = document.getElementById('avatar-input').files[0];
+    if(avatarFile) formData.append('avatar', avatarFile);
+
+    fetch('{% url "profile_update" %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+        body: formData
+    }).then(r => r.json()).then(data => {
+        if(data.status === 'success') {
+            alert("Данные обновлены!");
+            location.reload();
+        }
+    });
+}
+
+function changePassword() {
+    const pass = document.getElementById('new-pass').value;
+    if(!pass) return alert("Введите пароль");
+    
+    fetch('{% url "profile_change_password" %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({password: pass})
+    }).then(r => r.json()).then(data => {
+        if(data.status === 'success') alert("Пароль успешно изменен!");
+    });
+}
+
+function deleteAccount() {
+    if(confirm("ВНИМАНИЕ! Вы уверены, что хотите навсегда удалить свой аккаунт? Это действие невозможно отменить.")){
+        fetch('{% url "profile_delete_account" %}', {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        }).then(() => window.location.href = '/');
+    }
+}
+
+// Предпросмотр аватара при выборе файла
+document.getElementById('avatar-input').onchange = function(evt) {
+    const [file] = this.files;
+    if (file) document.getElementById('avatar-img').src = URL.createObjectURL(file);
+}
+</script>
+{% endblock %}

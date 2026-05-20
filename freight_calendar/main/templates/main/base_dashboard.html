@@ -53,9 +53,8 @@
             transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             text-decoration: none;
-            overflow: hidden;
             white-space: nowrap;
         }
 
@@ -69,10 +68,17 @@
             color: white !important;
         }
 
+        .nav-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
         /* Контент */
         .main-content {
             margin-left: 280px;
-            padding: 4.5rem 3rem 2rem 3rem; /* Добавили отступ сверху (4.5rem), чтобы кнопка не перекрывала заголовок */
+            padding: 4.5rem 3rem 2rem 3rem;
             transition: all 0.3s ease;
         }
 
@@ -90,27 +96,18 @@
             border-radius: 0.6rem;
             padding: 0.5rem 0.9rem;
             cursor: pointer;
-            font-size: 1rem;
             color: var(--brand-color);
             box-shadow: 0 4px 12px rgba(146, 68, 122, 0.08) !important;
-            transition: all 0.2s ease-in-out;
-        }
-
-        #sidebarToggle:hover {
-            border-color: var(--brand-color);
-            background: var(--brand-light);
-            transform: translateY(-2px);
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-<button type="button" id="sidebarToggle" class="shadow-sm">
-    ☰
-</button>
+<button type="button" id="sidebarToggle" class="shadow-sm">☰</button>
 
 <nav class="sidebar" id="sidebar">
+    <!-- Логотип -->
     <div class="d-flex align-items-center mb-5 px-3">
         <div style="background: var(--brand-light); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
             🚚
@@ -118,15 +115,61 @@
         <span class="fw-bold h5 mb-0" style="color: var(--brand-color);">FreightCal</span>
     </div>
 
+    <!-- ОСНОВНОЕ МЕНЮ (АВТОМАТИЧЕСКОЕ) -->
     <div class="nav flex-column h-100">
-        {% block sidebar_nav %}
-        <a href="{% url 'logistics_dashboard' %}" class="nav-link active"><span>📦</span> Управление заказами</a>
-        <a href="{% url 'planning_dashboard' %}" class="nav-link "><span>📅</span> Календарь плана</a>
-        {% endblock %}
+        <div class="flex-grow-1">
+            {% block sidebar_nav %}
+                {% if user.role == 'admin' %}
+                    <a href="{% url 'admin_users' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_users' %}active{% endif %}">
+                        <span>👥</span> Персонал
+                    </a>
+                    <a href="{% url 'admin_logs' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_logs' %}active{% endif %}">
+                        <span>📜</span> Логи системы
+                    </a>
 
+                {% elif user.role == 'logistics' %}
+                    <a href="{% url 'logistics_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'logistics_dashboard' %}active{% endif %}">
+                        <span>📦</span> Управление заказами
+                    </a>
+                    <a href="{% url 'planning_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'planning_dashboard' %}active{% endif %}">
+                        <span>📅</span> Балансировка объемов
+                    </a>
+
+                {% elif user.role == 'transport' %}
+                    <a href="{% url 'transport_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'transport_dashboard' %}active{% endif %}">
+                        <span>🚛</span> Управление автопарком
+                    </a>
+                    <a href="{% url 'transport_schedule' %}" class="nav-link {% if request.resolver_match.url_name == 'transport_schedule' %}active{% endif %}">
+                        <span>📋</span> График рейсов
+                    </a>
+                    <a href="{% url 'transport_maintenance' %}" class="nav-link {% if request.resolver_match.url_name == 'transport_maintenance' %}active{% endif %}">
+                        <span>🛠️</span> Календарь простоев ТС
+                    </a>
+                    <a href="{% url 'transport_drivers' %}" class="nav-link {% if request.resolver_match.url_name == 'transport_drivers' %}active{% endif %}">
+                        <span>👤️</span> Управление водителями
+                    </a>
+                {% endif %}
+            {% endblock %}
+        </div>
+
+        <!-- НИЖНЯЯ ЧАСТЬ (Личное) -->
         <div class="mt-auto w-100">
             <hr style="opacity: 0.1; margin-bottom: 1rem;">
-            <a href="/" class="nav-link text-danger"><span>🚪</span> Выйти</a>
+
+            <!-- Мой профиль -->
+            <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %} mb-1">
+                {% if user.avatar %}
+                    <img src="{{ user.avatar.url }}" class="nav-avatar">
+                {% else %}
+                    <span>👤</span>
+                {% endif %}
+                <span>Мой профиль</span>
+            </a>
+
+            <!-- Выход -->
+            <a href="{% url 'login' %}" class="nav-link text-danger">
+                <span>🚪</span> <span>Выйти</span>
+            </a>
         </div>
     </div>
 </nav>
@@ -145,7 +188,6 @@
     btn.onclick = () => {
         sidebar.classList.toggle('hidden');
         content.classList.toggle('expanded');
-        btn.classList.toggle('shifted');
     };
 </script>
 

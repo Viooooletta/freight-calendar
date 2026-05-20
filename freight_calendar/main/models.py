@@ -24,6 +24,7 @@ class CustomUser(AbstractUser):
         default=False,
         verbose_name="Активен (подтвержден)"
     )
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name="Фото профиля")
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
