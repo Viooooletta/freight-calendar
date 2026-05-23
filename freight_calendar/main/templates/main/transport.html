@@ -21,11 +21,25 @@
         color: white;
         box-shadow: 0 5px 15px rgba(146, 68, 122, 0.3);
     }
+
+    .table thead th a {
+        transition: all 0.2s;
+        border-radius: 4px;
+        padding: 4px;
+    }
+
+    .table thead th a:hover {
+        background: var(--brand-light);
+        color: var(--brand-color) !important;
+    }
+
+    .table thead th i {
+        color: var(--brand-color);
+    }
 </style>
 {% endblock %}
 
 {% block sidebar_icon %}🚛{% endblock %}
-
 
 
 {% block content %}
@@ -74,10 +88,50 @@
         <table class="table align-middle">
             <thead>
             <tr class="text-muted small text-uppercase">
-                <th>ID</th>
-                <th>Название/Номер авто</th>
-                <th>Грузоподъемность (кг)</th>
-                <th>Объем кузова (м³)</th>
+                <!-- Сортировка по ID -->
+                <th>
+                    <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.min_weight %}min_weight={{ request.GET.min_weight }}&{% endif %}{% if request.GET.min_volume %}min_volume={{ request.GET.min_volume }}&{% endif %}sort={% if current_sort == 'id' %}-id{% else %}id{% endif %}"
+                       class="text-decoration-none text-muted d-flex align-items-center gap-1">
+                        ID
+                        {% if current_sort == 'id' %}<i class="bi bi-sort-numeric-down"></i>
+                        {% elif current_sort == '-id' %}<i class="bi bi-sort-numeric-up-alt"></i>
+                        {% else %}<i class="bi bi-arrow-down-up opacity-25" style="font-size: 0.6rem;"></i>{% endif %}
+                    </a>
+                </th>
+
+                <!-- Сортировка по Названию -->
+                <th>
+                    <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.min_weight %}min_weight={{ request.GET.min_weight }}&{% endif %}{% if request.GET.min_volume %}min_volume={{ request.GET.min_volume }}&{% endif %}sort={% if current_sort == 'name' %}-name{% else %}name{% endif %}"
+                       class="text-decoration-none text-muted d-flex align-items-center gap-1">
+                        Название/Номер авто
+                        {% if current_sort == 'name' %}<i class="bi bi-sort-alpha-down"></i>
+                        {% elif current_sort == '-name' %}<i class="bi bi-sort-alpha-up-alt"></i>
+                        {% else %}<i class="bi bi-arrow-down-up opacity-25" style="font-size: 0.6rem;"></i>{% endif %}
+                    </a>
+                </th>
+
+                <!-- Сортировка по Весу -->
+                <th>
+                    <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.min_weight %}min_weight={{ request.GET.min_weight }}&{% endif %}{% if request.GET.min_volume %}min_volume={{ request.GET.min_volume }}&{% endif %}sort={% if current_sort == 'capacity_weight' %}-capacity_weight{% else %}capacity_weight{% endif %}"
+                       class="text-decoration-none text-muted d-flex align-items-center gap-1">
+                        Грузоподъемность
+                        {% if current_sort == 'capacity_weight' %}<i class="bi bi-sort-down-alt"></i>
+                        {% elif current_sort == '-capacity_weight' %}<i class="bi bi-sort-up"></i>
+                        {% else %}<i class="bi bi-arrow-down-up opacity-25" style="font-size: 0.6rem;"></i>{% endif %}
+                    </a>
+                </th>
+
+                <!-- Сортировка по Объему -->
+                <th>
+                    <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.min_weight %}min_weight={{ request.GET.min_weight }}&{% endif %}{% if request.GET.min_volume %}min_volume={{ request.GET.min_volume }}&{% endif %}sort={% if current_sort == 'capacity_volume' %}-capacity_volume{% else %}capacity_volume{% endif %}"
+                       class="text-decoration-none text-muted d-flex align-items-center gap-1">
+                        Объем кузова
+                        {% if current_sort == 'capacity_volume' %}<i class="bi bi-sort-down-alt"></i>
+                        {% elif current_sort == '-capacity_volume' %}<i class="bi bi-sort-up"></i>
+                        {% else %}<i class="bi bi-arrow-down-up opacity-25" style="font-size: 0.6rem;"></i>{% endif %}
+                    </a>
+                </th>
+
                 <th class="text-end">Действия</th>
             </tr>
             </thead>

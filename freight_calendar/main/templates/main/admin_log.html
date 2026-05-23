@@ -1,203 +1,308 @@
 {% extends 'main/base_dashboard.html' %}
 
-{% block title %}Журнал ответственности | FreightCal{% endblock %}
+{% block title %}Аудит безопасности | FreightCal ERP{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Карточки статистики */
-    .stat-card {
-        background: white;
-        border-radius: 1.5rem;
-        padding: 1.5rem;
-        border: 1px solid rgba(0,0,0,0.02);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
-        transition: transform 0.3s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-3px);
+    :root {
+        --slate-50: #f8fafc;
+        --slate-100: #f1f5f9;
+        --slate-200: #e2e8f0;
+        --slate-700: #334155;
+        --slate-800: #1e293b;
     }
 
-    /* Карточки пользователей */
-    .user-log-card {
+    /* Статистика */
+    .stat-card-clean {
         background: white;
-        border-radius: 1.2rem;
-        padding: 1.2rem;
-        border: 1px solid #f1f1f1;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
+        border: 1px solid var(--slate-200);
+        border-radius: 1rem;
+        padding: 1.5rem;
         position: relative;
+        overflow: hidden;
+        transition: transform 0.2s;
     }
-    .user-log-card:hover {
+    .stat-card-clean:hover { transform: translateY(-3px); }
+    .stat-label { font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.2px; }
+    .stat-icon-bg { position: absolute; right: -10px; bottom: -10px; font-size: 3.5rem; opacity: 0.05; transform: rotate(-15deg); }
+
+    /* Панель фильтров */
+    .audit-toolbar {
+        background: white;
+        border: 1px solid var(--slate-200);
+        border-radius: 1rem;
+        padding: 1.25rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Карточки сотрудников */
+    .user-audit-card {
+        background: white;
+        border: 1px solid var(--slate-200);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .user-audit-card:hover {
         border-color: var(--brand-color);
-        box-shadow: 0 12px 25px rgba(146, 68, 122, 0.08);
-        transform: translateY(-5px);
+        background: var(--slate-50);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.03);
     }
-    .log-count-badge {
-        position: absolute;
-        top: 15px;
-        right: 15px;
+    .action-count {
         background: var(--brand-light);
         color: var(--brand-color);
         font-size: 0.7rem;
-        padding: 3px 10px;
+        font-weight: 800;
+        padding: 4px 10px;
         border-radius: 20px;
-        font-weight: 800;
-        border: 1px solid rgba(146, 68, 122, 0.1);
-    }
-    .avatar-box {
-        width: 50px;
-        height: 50px;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        color: var(--brand-color);
-        border: 1px solid #eee;
-        font-size: 1.2rem;
     }
 
-    /* Стили для модального окна логов */
-    #historyContent {
-        max-height: 60vh;
-        overflow-y: auto;
+    /* Списки в модалке выбора отчета */
+    .report-choice-card {
+        transition: all 0.2s;
+        border: 1px solid var(--slate-200);
+        cursor: pointer;
     }
+    .report-choice-card:hover {
+        border-color: var(--brand-color);
+        background: var(--slate-50);
+    }
+    .user-select-item {
+        transition: background 0.2s;
+        border-radius: 8px;
+    }
+    .user-select-item:hover { background: var(--slate-100); }
+
+    /* Глобальная лента */
+    .global-feed-table thead th {
+        background: var(--slate-50);
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--slate-700);
+        padding: 1rem;
+    }
+    .global-feed-table td { padding: 1rem; font-size: 0.85rem; border-bottom: 1px solid var(--slate-100); }
 </style>
 {% endblock %}
 
-{% block sidebar_nav %}
-    <a href="{% url 'admin_users' %}" class="nav-link"><span>👥</span> Работа с персоналом</a>
-    <a href="{% url 'admin_logs' %}" class="nav-link active"><span>📜</span> Журнал событий</a>
-{% endblock %}
-
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid">
+
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <span class="badge mb-2" style="background: #fff4e6; color: #d9480f; font-weight: 700; letter-spacing: 0.5px;">SECURITY & AUDIT</span>
-            <h1 class="fw-bold display-6 mb-0">Системный журнал</h1>
-            <p class="text-muted">Протоколирование действий персонала для обеспечения прозрачности планирования</p>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item small fw-bold text-muted text-uppercase">Administration</li>
+                    <li class="breadcrumb-item small fw-bold active text-primary text-uppercase">Security Audit</li>
+                </ol>
+            </nav>
+            <h1 class="h2 fw-bold text-slate-900 mb-1">Системный аудит</h1>
+            <p class="text-muted small mb-0">Централизованный мониторинг активности персонала и изменений в БД</p>
         </div>
+        <button class="btn btn-dark fw-bold px-4 py-2 shadow-sm d-flex align-items-center gap-2"
+                style="border-radius: 10px;" data-bs-toggle="modal" data-bs-target="#reportChoiceModal">
+            <i class="bi bi-file-earmark-pdf"></i> Сформировать отчет
+        </button>
     </div>
 
-    <!-- Верхняя панель статистики (Dashboard) -->
+    <!-- Индикаторы (KPI) -->
     <div class="row g-4 mb-5">
         <div class="col-md-4">
-            <div class="stat-card d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Всего записей</div>
-                    <h2 class="fw-bold mb-0">{{ total_actions }}</h2>
-                </div>
-                <div class="bg-light p-3 rounded-4">📊</div>
+            <div class="stat-card-clean shadow-sm h-100">
+                <span class="stat-label">Всего операций</span>
+                <h2 class="fw-bold mt-2 mb-0 text-slate-800">{{ total_actions }}</h2>
+                <div class="stat-icon-bg">📋</div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="stat-card d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Активность за 24ч</div>
-                    <h2 class="fw-bold mb-0 text-success">+{{ today_actions }}</h2>
-                </div>
-                <div class="bg-success-subtle p-3 rounded-4">⚡</div>
+            <div class="stat-card-clean shadow-sm h-100 border-start border-4 border-success">
+                <span class="stat-label">Интенсивность (24ч)</span>
+                <h2 class="fw-bold mt-2 mb-0 text-success">+{{ today_actions }}</h2>
+                <div class="stat-icon-bg">⚡</div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="stat-card d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Топ активности</div>
-                    <h2 class="fw-bold mb-0 text-truncate" style="max-width: 180px;">{{ top_user.username|default:"Нет данных" }}</h2>
-                </div>
-                <div class="bg-warning-subtle p-3 rounded-4">🏆</div>
+            <div class="stat-card-clean shadow-sm h-100 border-start border-4 border-primary">
+                <span class="stat-label">Наивысшая активность</span>
+                <h2 class="fw-bold mt-2 mb-0 text-primary text-truncate" style="font-size: 1.5rem;">{{ top_user.username|default:"---" }}</h2>
+                <div class="stat-icon-bg">🏆</div>
             </div>
         </div>
     </div>
 
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <h4 class="fw-bold mb-0">Сотрудники в системе</h4>
-        <div class="text-muted small">Нажмите на карточку для просмотра истории действий</div>
+    <!-- Тулбар -->
+    <div class="audit-toolbar shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <form method="get" class="d-flex gap-2 flex-grow-1" style="max-width: 600px;">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control border-start-0 bg-light" placeholder="Поиск по имени сотрудника..." value="{{ request.GET.q }}">
+            </div>
+            <select name="sort" class="form-select form-select-sm bg-light w-auto" onchange="this.form.submit()">
+                <option value="-log_count" {% if request.GET.sort == '-log_count' %}selected{% endif %}>По активности</option>
+                <option value="username" {% if request.GET.sort == 'username' %}selected{% endif %}>По алфавиту (А-Я)</option>
+            </select>
+        </form>
+
+        <ul class="nav nav-pills p-1 bg-light rounded-3" id="auditTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active py-1 px-3 small fw-bold" data-bs-toggle="pill" data-bs-target="#grid-view">Штат</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link py-1 px-3 small fw-bold" data-bs-toggle="pill" data-bs-target="#feed-view">Общая лента</button>
+            </li>
+        </ul>
     </div>
 
-    <!-- Сетка сотрудников -->
-    <div class="row g-4">
-        {% for u in users %}
-        <div class="col-xl-3 col-lg-4 col-md-6">
-            <div class="user-log-card d-flex align-items-center gap-3" onclick="showUserHistory({{ u.id }}, '{{ u.username }}')">
-                <span class="log-count-badge">{{ u.log_count }}</span>
-                <div class="avatar-box">{{ u.username|first|upper }}</div>
-                <div class="overflow-hidden">
-                    <div class="fw-bold text-dark text-truncate">{{ u.username }}</div>
-                    <div class="small text-muted">{{ u.get_role_display }}</div>
+    <div class="tab-content">
+        <!-- ВИД 1: СЕТКА СОТРУДНИКОВ -->
+        <div class="tab-pane fade show active" id="grid-view">
+            <div class="row g-3">
+                {% for u in users %}
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="user-audit-card shadow-sm" onclick="showUserHistory({{ u.id }}, '{{ u.username }}')">
+                        <div class="avatar-placeholder" style="width: 40px; height: 40px; border-radius: 8px; background: var(--slate-800); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                            {{ u.username|first|upper }}
+                        </div>
+                        <div class="overflow-hidden">
+                            <div class="fw-bold text-dark text-truncate small">{{ u.username }}</div>
+                            <span class="action-count">{{ u.log_count }} действ.</span>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5 text-muted small">Пользователи не найдены</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ВИД 2: ЖИВАЯ ЛЕНТА -->
+        <div class="tab-pane fade" id="feed-view">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table global-feed-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Timestamp</th>
+                                <th>Инициатор</th>
+                                <th>Операция</th>
+                                <th class="pe-4">Результат события</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in global_logs %}
+                            <tr>
+                                <td class="ps-4 text-muted small fw-bold">{{ log.timestamp|date:"d.m.y | H:i:s" }}</td>
+                                <td><span class="badge bg-light text-dark border px-2 py-1">{{ log.user.username }}</span></td>
+                                <td><span class="fw-bold text-primary small text-uppercase">{{ log.action_type }}</span></td>
+                                <td class="pe-4 small text-secondary">{{ log.description }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center py-5 text-muted">Архив пуст</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
-        {% empty %}
-        <div class="col-12 text-center py-5">
-            <p class="text-muted">Пользователи не найдены</p>
-        </div>
-        {% endfor %}
     </div>
 </div>
 
-<!-- Модальное окно истории -->
+<!-- МОДАЛКА 1: ДЕТАЛИЗАЦИЯ ИСТОРИИ (AJAX) -->
 <div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header p-4 border-bottom bg-light">
                 <div>
-                    <h5 class="modal-title fw-bold mb-0">История действий пользователя</h5>
-                    <span id="modalUserName" class="badge bg-primary px-3 py-2 mt-2 rounded-pill"></span>
+                    <h5 class="modal-title fw-bold mb-0">Протокол сотрудника</h5>
+                    <span id="modalUserName" class="text-primary fw-bold small text-uppercase"></span>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0" id="historyContent">
-                <!-- Контент подгружается через AJAX из user_history_fragment.html -->
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-3 text-muted">Загрузка протокола безопасности...</p>
+                    <p class="mt-3 text-muted small fw-bold uppercase">Запрос к архиву...</p>
                 </div>
-            </div>
-            <div class="modal-footer border-0 p-3 bg-light">
-                <button type="button" class="btn btn-secondary px-4 rounded-3 fw-bold" data-bs-dismiss="modal">Закрыть</button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- МОДАЛКА 2: ВЫБОР ОТЧЕТА ДЛЯ ПЕЧАТИ -->
+<div class="modal fade" id="reportChoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header p-4 border-0">
+                <h5 class="fw-bold mb-0">Мастер генерации отчетов</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 pt-0">
+                <!-- Вариант 1: По всем -->
+                <a href="{% url 'system_audit_print' %}" target="_blank" class="report-choice-card d-block p-3 rounded-4 text-decoration-none mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-primary text-white rounded-3 p-2 px-3 fs-4"><i class="bi bi-layers"></i></div>
+                        <div>
+                            <div class="fw-bold text-dark">Сводный отчет по системе</div>
+                            <div class="small text-muted">Протокол всех действий персонала</div>
+                        </div>
+                    </div>
+                </a>
+
+                <div class="text-center py-2"><span class="small text-muted fw-bold">ПЕРСОНАЛЬНЫЙ ОТЧЕТ</span></div>
+
+                <!-- Вариант 2: Выбор сотрудника -->
+                <div class="bg-light p-3 rounded-4">
+                    <div class="input-group input-group-sm mb-3 shadow-sm">
+                        <span class="input-group-text bg-white border-0"><i class="bi bi-search"></i></span>
+                        <input type="text" id="userSearchPrint" class="form-control border-0" placeholder="Поиск сотрудника..." onkeyup="filterUsersForPrint()">
+                    </div>
+                    <div id="printUserList" style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                        {% for u in users %}
+                        <div class="user-select-item p-2 border-bottom d-flex justify-content-between align-items-center" data-username="{{ u.username|lower }}">
+                            <span class="small fw-bold text-dark">{{ u.username }}</span>
+                            <a href="{% url 'system_audit_print' %}?user_id={{ u.id }}" target="_blank" class="btn btn-sm btn-primary py-0 px-3 fw-bold" style="font-size: 0.7rem; border-radius: 6px;">Печать</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// Функция поиска в модалке отчета
+function filterUsersForPrint() {
+    let input = document.getElementById('userSearchPrint').value.toLowerCase();
+    let items = document.querySelectorAll('.user-select-item');
+    items.forEach(item => {
+        let username = item.getAttribute('data-username');
+        item.style.display = username.includes(input) ? 'flex' : 'none';
+    });
+}
+
+// Показ истории одного пользователя
 function showUserHistory(userId, username) {
-    // 1. Устанавливаем имя в заголовке
     document.getElementById('modalUserName').innerText = '@' + username;
-
-    // 2. Показываем спиннер перед загрузкой
     const content = document.getElementById('historyContent');
-    content.innerHTML = `
-        <div class="text-center py-5">
-            <div class="spinner-grow text-primary" role="status"></div>
-            <p class="mt-3 text-muted fw-bold small text-uppercase">Запрос к архиву логов...</p>
-        </div>`;
+    content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
 
-    // 3. Открываем модалку
-    const modal = new bootstrap.Modal(document.getElementById('historyModal'));
-    modal.show();
+    new bootstrap.Modal(document.getElementById('historyModal')).show();
 
-    // 4. Выполняем AJAX запрос
     fetch(`/admin-panel/logs/user/${userId}/`)
-        .then(response => {
-            if (!response.ok) throw new Error('Ошибка сети');
-            return response.json();
-        })
-        .then(data => {
-            if (data.html) {
-                content.innerHTML = data.html;
-            } else {
-                content.innerHTML = '<div class="p-5 text-center text-muted">История действий пуста.</div>';
-            }
-        })
-        .catch(err => {
-            content.innerHTML = `<div class="p-5 text-center text-danger">Не удалось загрузить данные: ${err.message}</div>`;
-        });
+        .then(r => r.json())
+        .then(data => { content.innerHTML = data.html; })
+        .catch(err => { content.innerHTML = '<div class="p-4 text-danger">Ошибка загрузки данных.</div>'; });
 }
 </script>
 {% endblock %}

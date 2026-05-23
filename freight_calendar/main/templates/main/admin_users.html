@@ -1,177 +1,336 @@
 {% extends 'main/base_dashboard.html' %}
 
-{% block title %}Управление персоналом | FreightCal{% endblock %}
+{% block title %}Управление персоналом | FreightCal ERP{% endblock %}
 
 {% block extra_css %}
 <style>
-    .user-card {
-        background: white;
-        border-radius: 1.5rem;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-        padding: 2rem;
-        border: 1px solid rgba(146, 68, 122, 0.05);
+    :root {
+        --slate-50: #f8fafc;
+        --slate-100: #f1f5f9;
+        --slate-200: #e2e8f0;
+        --slate-600: #475569;
+        --slate-700: #334155;
+        --slate-900: #0f172a;
     }
-    .table thead th {
-        background: #f8f9fa;
-        border: none;
-        color: #6c757d;
+
+    /* Стили заголовков для сортировки */
+    .table thead th a {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: color 0.2s;
+        text-decoration: none;
+        color: var(--slate-600) !important;
+    }
+    .table thead th a:hover {
+        color: var(--brand-color) !important;
+    }
+    .table thead th i {
+        font-size: 0.85rem;
+        color: var(--brand-color);
+    }
+
+    .filter-section {
+        background: white;
+        border: 1px solid var(--slate-200);
+        border-radius: 1rem;
+        padding: 1.5rem;
+    }
+
+    .form-label-custom {
+        font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
-        font-size: 0.7rem;
-        letter-spacing: 1px;
-        padding: 1.2rem;
+        letter-spacing: 0.05em;
+        color: var(--slate-600);
+        margin-bottom: 0.5rem;
+        display: block;
     }
-    .table td {
+
+    .search-input-wrapper {
+        position: relative;
+    }
+
+    .search-input-wrapper i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--slate-400);
+    }
+
+    .search-input-wrapper .form-control {
+        padding-left: 2.75rem;
+        border-radius: 0.75rem;
+        border-color: var(--slate-200);
+        background: var(--slate-50);
+    }
+
+    .user-table-card {
+        background: white;
+        border: 1px solid var(--slate-200);
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .table thead th {
+        background: var(--slate-50);
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--slate-200);
+    }
+
+    .table tbody td {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--slate-100);
         vertical-align: middle;
-        padding: 1rem 1.2rem;
-        border-bottom: 1px solid #f8f9fa;
     }
-    .editable-input {
+
+    .editable-field {
         border: 1px solid transparent;
         background: transparent;
-        padding: 0.5rem;
-        border-radius: 8px;
-        width: 100%;
-        transition: all 0.3s;
+        border-radius: 6px;
+        padding: 0.4rem 0.6rem;
         font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--slate-900);
+        width: 100%;
+        transition: all 0.2s;
     }
-    .editable-input:hover {
-        background: #f1f3f5;
+
+    .editable-field:hover {
+        background: var(--slate-100);
     }
-    .editable-input:focus {
-        border-color: var(--brand-color);
+
+    .editable-field:focus {
         background: white;
-        outline: none;
+        border-color: var(--brand-color);
         box-shadow: 0 0 0 3px rgba(146, 68, 122, 0.1);
-    }
-    /* Класс для анимации успешного сохранения */
-    .save-success {
-        background-color: #d1e7dd !important;
-        transition: background-color 0.5s;
+        outline: none;
     }
 
-    .status-switch { cursor: pointer; transform: scale(1.1); }
-
-    .btn-fire {
-        color: #dc3545;
-        background: #fff5f5;
-        border: 1px solid #ffe3e3;
-        padding: 0.5rem 0.8rem;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.8rem;
-        transition: 0.2s;
-    }
-    .btn-fire:hover {
-        background: #dc3545;
-        color: white;
-        box-shadow: 0 4px 10px rgba(220, 53, 69, 0.2);
-    }
-
-    .role-select {
-        border: 1px solid #eee;
-        background: #f8f9fa;
-        color: #495057;
-        font-weight: 600;
+    .role-select-custom {
+        background-color: var(--slate-50);
+        border: 1px solid var(--slate-200);
         border-radius: 8px;
-        padding: 6px 12px;
         font-size: 0.85rem;
+        font-weight: 600;
+        padding: 0.4rem 0.75rem;
+        color: var(--slate-700);
         cursor: pointer;
     }
-    .role-select:focus {
-        border-color: var(--brand-color);
-        outline: none;
+
+    .save-success {
+        animation: flashGreen 1.5s;
+    }
+
+    @keyframes flashGreen {
+        0% { background-color: transparent; }
+        30% { background-color: #f0fdf4; }
+        100% { background-color: transparent; }
+    }
+
+    .btn-terminate {
+        color: #ef4444;
+        background: #fef2f2;
+        border: 1px solid #fee2e2;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .btn-terminate:hover {
+        background: #ef4444;
+        color: white;
+        border-color: #ef4444;
     }
 </style>
 {% endblock %}
 
-{% block sidebar_nav %}
-    <a href="{% url 'admin_users' %}" class="nav-link active">
-        <span>👥</span> Работа с персоналом
-    </a>
-    <a href="{% url 'admin_logs' %}" class="nav-link">
-        <span>📜</span> Журнал событий
-    </a>
-{% endblock %}
-
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-5">
-        <div>
-            <span class="badge mb-2" style="background: var(--brand-light); color: var(--brand-color); font-weight: 700;">ADMINISTRATION</span>
-            <h1 class="fw-bold display-6 mb-0">Управление пользователями</h1>
+<div class="container-fluid">
+
+    <!-- Хедер страницы -->
+    <div class="row align-items-center mb-5">
+        <div class="col-md-6">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item small fw-bold text-muted text-uppercase">Administration</li>
+                    <li class="breadcrumb-item small fw-bold active text-primary text-uppercase">User Access Control</li>
+                </ol>
+            </nav>
+            <h1 class="h2 fw-bold text-slate-900 mb-0">Управление пользователями</h1>
         </div>
-        <div class="text-end">
-            <div class="h4 fw-bold mb-0 text-primary">{{ users|length }}</div>
-            <div class="small text-muted text-uppercase fw-bold">Аккаунтов в системе</div>
+        <div class="col-md-6 text-md-end d-flex justify-content-md-end gap-3 align-items-center">
+            <div class="text-end me-3">
+                <div class="h3 fw-bold text-primary mb-0">{{ users|length }}</div>
+                <div class="small fw-bold text-muted text-uppercase tracking-wider">Всего аккаунтов</div>
+            </div>
+            <!-- КНОПКА ДОБАВЛЕНИЯ -->
+            <button class="btn btn-primary fw-bold px-4 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#createUserModal"
+                    style="background: var(--brand-color); border: none; border-radius: 10px;">
+                <i class="bi bi-person-plus-fill me-2"></i>Создать аккаунт
+            </button>
         </div>
     </div>
 
-    <div class="user-card border-0">
+    <!-- Панель фильтров -->
+    <div class="filter-section shadow-sm mb-4">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-lg-4">
+                <label class="form-label-custom">Поиск в реестре</label>
+                <div class="search-input-wrapper">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="q" class="form-control" placeholder="Имя пользователя или email..." value="{{ request.GET.q }}">
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <label class="form-label-custom">Уровень доступа (Роль)</label>
+                <select name="role" class="form-select role-select-custom">
+                    <option value="">Все роли</option>
+                    {% for val, label in role_choices %}
+                    <option value="{{ val }}" {% if request.GET.role == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label-custom">Статус</label>
+                <select name="status" class="form-select role-select-custom">
+                    <option value="">Любой</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Активен</option>
+                    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Заблокирован</option>
+                </select>
+            </div>
+            <div class="col-lg-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1 fw-bold py-2 shadow-sm"
+                        style="background: var(--brand-color); border: none; border-radius: 10px;">
+                    Применить
+                </button>
+                <a href="{% url 'admin_users' %}" class="btn btn-light border fw-bold py-2 px-3"
+                   style="border-radius: 10px;" title="Сбросить фильтры">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Таблица пользователей -->
+    <div class="user-table-card shadow-sm">
         <div class="table-responsive">
-            <table class="table align-middle">
+            <table class="table mb-0">
                 <thead>
-                    <tr>
-                        <th style="width: 20%;">Имя (Login)</th>
-                        <th style="width: 25%;">Email</th>
-                        <th style="width: 15%;">Роль в системе</th>
-                        <th class="text-center">Активен</th>
-                        <th class="text-center">Staff</th>
-                        <th>Смена пароля</th>
-                        <th class="text-end">Управление</th>
-                    </tr>
+                <tr>
+                    <th>
+                        <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.role %}role={{ request.GET.role }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}sort={% if current_sort == 'username' %}-username{% else %}username{% endif %}">
+                            Логин
+                            {% if current_sort == 'username' %}<i class="bi bi-sort-alpha-down"></i>
+                            {% elif current_sort == '-username' %}<i class="bi bi-sort-alpha-up-alt"></i>
+                            {% else %}<i class="bi bi-arrow-down-up opacity-50"></i>{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.role %}role={{ request.GET.role }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}sort={% if current_sort == 'email' %}-email{% else %}email{% endif %}">
+                            Email
+                            {% if current_sort == 'email' %}<i class="bi bi-sort-down"></i>
+                            {% elif current_sort == '-email' %}<i class="bi bi-sort-up"></i>
+                            {% else %}<i class="bi bi-arrow-down-up opacity-50"></i>{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.role %}role={{ request.GET.role }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}sort={% if current_sort == 'role' %}-role{% else %}role{% endif %}">
+                            Роль
+                            {% if current_sort == 'role' %}<i class="bi bi-filter-square-fill"></i>
+                            {% elif current_sort == '-role' %}<i class="bi bi-filter-square"></i>
+                            {% else %}<i class="bi bi-arrow-down-up opacity-50"></i>{% endif %}
+                        </a>
+                    </th>
+                    <th class="text-center">Активен</th>
+                    <th class="text-center">Staff</th>
+                    <th>Новый пароль</th>
+                    <th class="text-end pe-4">Действия</th>
+                </tr>
                 </thead>
                 <tbody>
-                    {% for user in users %}
-                    <tr id="user-row-{{ user.id }}">
-                        <td>
-                            <input type="text" class="editable-input fw-bold" value="{{ user.username }}"
-                                   id="input-username-{{ user.id }}"
-                                   onchange="updateUser({{ user.id }}, 'username', this.value)">
-                        </td>
-                        <td>
-                            <input type="email" class="editable-input" value="{{ user.email }}"
-                                   id="input-email-{{ user.id }}"
-                                   onchange="updateUser({{ user.id }}, 'email', this.value)">
-                        </td>
-                        <td>
-                            <select class="role-select w-100" onchange="updateUser({{ user.id }}, 'role', this.value)">
-                                {% for val, label in user.ROLE_CHOICES %}
-                                <option value="{{ val }}" {% if user.role == val %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                        <td class="text-center">
-                            <div class="form-check form-switch d-inline-block">
-                                <input type="checkbox" class="form-check-input status-switch"
-                                       {% if user.is_active %}checked{% endif %}
-                                       onchange="updateUser({{ user.id }}, 'is_active', this.checked)">
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="form-check form-switch d-inline-block">
-                                <input type="checkbox" class="form-check-input status-switch"
-                                       {% if user.is_staff %}checked{% endif %}
-                                       onchange="updateUser({{ user.id }}, 'is_staff', this.checked)">
-                            </div>
-                        </td>
-                        <td>
-                            <div class="input-group input-group-sm shadow-sm" style="max-width: 160px; border-radius: 8px; overflow: hidden;">
-                                <input type="password" class="form-control border-0 bg-light" placeholder="Новый" id="pass-{{ user.id }}">
-                                <button class="btn btn-dark border-0 px-3" onclick="changePassword({{ user.id }})" title="Сохранить пароль">💾</button>
-                            </div>
-                        </td>
-                        <td class="text-end">
-                            {% if user.id != request.user.id %}
-                                <button class="btn-fire" onclick="fireUser({{ user.id }}, '{{ user.username }}')">Уволить</button>
-                            {% else %}
-                                <span class="badge bg-light text-muted p-2">Это вы</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
+                {% for user in users %}
+                <tr id="user-row-{{ user.id }}">
+                    <td><input type="text" class="editable-field" value="{{ user.username }}" onchange="updateUser({{ user.id }}, 'username', this.value)"></td>
+                    <td><input type="email" class="editable-field" value="{{ user.email }}" onchange="updateUser({{ user.id }}, 'email', this.value)"></td>
+                    <td>
+                        <select class="role-select-custom w-100" onchange="updateUser({{ user.id }}, 'role', this.value)">
+                            {% for val, label in user.ROLE_CHOICES %}
+                            <option value="{{ val }}" {% if user.role == val %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        <div class="form-check form-switch d-inline-block">
+                            <input type="checkbox" class="form-check-input status-switch" {% if user.is_active %}checked{% endif %} onchange="updateUser({{ user.id }}, 'is_active', this.checked)">
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <div class="form-check form-switch d-inline-block">
+                            <input type="checkbox" class="form-check-input status-switch" {% if user.is_staff %}checked{% endif %} onchange="updateUser({{ user.id }}, 'is_staff', this.checked)">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm shadow-sm" style="max-width: 150px; border-radius: 8px; overflow: hidden;">
+                            <input type="password" class="form-control border-0 bg-light" placeholder="••••••" id="pass-{{ user.id }}">
+                            <button class="btn btn-dark border-0 px-2" onclick="changePassword({{ user.id }})"><i class="bi bi-save"></i></button>
+                        </div>
+                    </td>
+                    <td class="text-end pe-4">
+                        {% if user.id != request.user.id %}
+                        <button class="btn-terminate" onclick="fireUser({{ user.id }}, '{{ user.username }}')">Уволить</button>
+                        {% else %}
+                        <span class="badge bg-light text-muted fw-bold p-2 px-3 border rounded-pill">Это вы</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО СОЗДАНИЯ ПОЛЬЗОВАТЕЛЯ -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-0 p-4 pb-0">
+                <h5 class="fw-bold text-slate-900">Регистрация нового сотрудника</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="createUserForm">
+                    <div class="mb-3">
+                        <label class="form-label-custom">Имя пользователя (Логин)</label>
+                        <input type="text" id="new-username" class="form-control bg-light border-0 p-3" style="border-radius: 12px;" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-custom">Email-адрес</label>
+                        <input type="email" id="new-email" class="form-control bg-light border-0 p-3" style="border-radius: 12px;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-custom">Роль в системе</label>
+                        <select id="new-role" class="form-select bg-light border-0 p-3" style="border-radius: 12px;">
+                            {% for val, label in role_choices %}
+                            <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label-custom">Временный пароль</label>
+                        <input type="password" id="new-password" class="form-control bg-light border-0 p-3" style="border-radius: 12px;" required>
+                    </div>
+                    <button type="button" onclick="createUser()" class="btn btn-primary w-100 py-3 fw-bold shadow"
+                            style="background: var(--brand-color); border: none; border-radius: 12px;">
+                        Создать учетную запись
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -179,78 +338,90 @@
 
 {% block extra_js %}
 <script>
-// Универсальная функция обновления полей
-function updateUser(userId, field, value) {
-    const row = document.getElementById(`user-row-${userId}`);
+    // Создание пользователя
+    function createUser() {
+        const data = {
+            username: document.getElementById('new-username').value,
+            email: document.getElementById('new-email').value,
+            role: document.getElementById('new-role').value,
+            password: document.getElementById('new-password').value
+        };
 
-    fetch(`/admin-panel/users/update/${userId}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ field: field, value: value })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Подсвечиваем строку зеленым при успехе
-            row.classList.add('save-success');
-            setTimeout(() => row.classList.remove('save-success'), 1000);
-        } else {
-            alert('Ошибка: ' + data.message);
-        }
-    })
-    .catch(err => alert('Ошибка соединения с сервером'));
-}
+        if (!data.username || !data.password) return alert("Заполните обязательные поля");
 
-// Смена пароля
-function changePassword(userId) {
-    const passInput = document.getElementById(`pass-${userId}`);
-    if (!passInput.value) return alert('Пожалуйста, введите новый пароль');
+        fetch('{% url "create_user_ajax" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
 
-    fetch(`/admin-panel/users/password/${userId}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ password: passInput.value })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert('Пароль пользователя успешно обновлен');
-            passInput.value = '';
-            const row = document.getElementById(`user-row-${userId}`);
-            row.classList.add('save-success');
-            setTimeout(() => row.classList.remove('save-success'), 1000);
-        }
-    });
-}
+    // Универсальная функция обновления полей
+    function updateUser(userId, field, value) {
+        const row = document.getElementById(`user-row-${userId}`);
+        fetch(`/admin-panel/users/update/${userId}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+            body: JSON.stringify({field: field, value: value})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                row.classList.add('save-success');
+                setTimeout(() => row.classList.remove('save-success'), 1500);
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    }
 
-// Удаление пользователя
-function fireUser(userId, name) {
-    if (!confirm(`ВНИМАНИЕ! Вы действительно хотите безвозвратно удалить сотрудника "${name}"? Это действие невозможно отменить.`)) return;
+    // Смена пароля
+    function changePassword(userId) {
+        const passInput = document.getElementById(`pass-${userId}`);
+        if (!passInput.value) return alert('Введите пароль');
+        fetch(`/admin-panel/users/password/${userId}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+            body: JSON.stringify({password: passInput.value})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const row = document.getElementById(`user-row-${userId}`);
+                row.classList.add('save-success');
+                passInput.value = '';
+                alert('Пароль обновлен');
+            }
+        });
+    }
 
-    fetch(`/admin-panel/users/fire/${userId}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            const row = document.getElementById(`user-row-${userId}`);
-            row.style.transform = 'translateX(50px)';
-            row.style.opacity = '0';
-            setTimeout(() => row.remove(), 300);
-        } else {
-            alert('Ошибка при удалении: ' + data.message);
-        }
-    });
-}
+    // Удаление пользователя
+    function fireUser(userId, name) {
+        if (!confirm(`Вы подтверждаете удаление сотрудника "${name}"?`)) return;
+        fetch(`/admin-panel/users/fire/${userId}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const row = document.getElementById(`user-row-${userId}`);
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(-20px)';
+                row.style.transition = 'all 0.4s ease';
+                setTimeout(() => row.remove(), 400);
+            } else {
+                alert(data.message);
+            }
+        });
+    }
 </script>
 {% endblock %}

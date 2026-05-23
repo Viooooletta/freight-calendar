@@ -61,5 +61,7 @@ urlpatterns = [
     path('profile/update/', views.profile_update_ajax, name='profile_update'),
     path('profile/password/', views.profile_change_password, name='profile_change_password'),
     path('profile/delete/', views.profile_delete_account, name='profile_delete_account'),
-path('logistics/route-sheet/<int:plan_id>/print/', views.route_sheet_print, name='route_sheet_print'),
+    path('logistics/route-sheet/<int:plan_id>/print/', views.route_sheet_print, name='route_sheet_print'),
+    path('admin-panel/users/create/', views.create_user_ajax, name='create_user_ajax'),
+    path('admin-panel/logs/system-print/', views.system_audit_print_view, name='system_audit_print'),
 ]

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Protocol_{{ print_date|date:"Ymd" }}</title>
+    <style>
+        @page { size: A4; margin: 15mm; }
+        body { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #000; line-height: 1.3; }
+        .no-print { background: #f1f1f1; padding: 15px; text-align: center; border-bottom: 1px solid #ccc; margin-bottom: 20px; }
+        .btn-p { padding: 8px 25px; background: #000; color: #fff; border: none; cursor: pointer; font-weight: bold; }
+        @media print { .no-print { display: none; } }
+
+        .header-doc { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .header-doc h1 { font-size: 16px; margin: 0; text-transform: uppercase; }
+
+        .meta-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+        .meta-table td { padding: 4px; border: 1px solid #ddd; }
+
+        .log-table { width: 100%; border-collapse: collapse; }
+        .log-table th, .log-table td { border: 1px solid #000; padding: 6px; text-align: left; vertical-align: top; }
+        .log-table th { background: #f0f0f0; font-size: 10px; text-transform: uppercase; }
+
+        .footer-doc { margin-top: 40px; font-size: 10px; }
+        .sig-block { margin-top: 30px; width: 100%; }
+        .underline { border-bottom: 1px solid #000; display: inline-block; width: 200px; }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="btn-p" onclick="window.print()">ПЕЧАТЬ В PDF / ПРИНТЕР</button>
+    </div>
+
+    <div class="header-doc">
+        <h1>Freight Calendar ERP System</h1>
+        <p style="margin: 5px 0 0 0;">ПРОТОКОЛ АУДИТА ИНФОРМАЦИОННОЙ БЕЗОПАСНОСТИ</p>
+    </div>
+
+    <table class="meta-table">
+        <tr>
+            <td width="20%"><strong>ДОКУМЕНТ:</strong></td>
+            <td>{{ report_title }}</td>
+            <td width="20%"><strong>ДАТА ВЫГРУЗКИ:</strong></td>
+            <td width="20%">{{ print_date|date:"d.m.Y H:i" }}</td>
+        </tr>
+        <tr>
+            <td><strong>ОПЕРАТОР:</strong></td>
+            <td>{{ generated_by }}</td>
+            <td><strong>КОЛ-ВО ЗАПИСЕЙ:</strong></td>
+            <td>{{ total_records }}</td>
+        </tr>
+    </table>
+
+    <table class="log-table">
+        <thead>
+            <tr>
+                <th width="15%">Время</th>
+                <th width="15%">Сотрудник</th>
+                <th width="15%">Действие</th>
+                <th>Описание события (Log Description)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.timestamp|date:"d.m.Y H:i:s" }}</td>
+                <td><strong>{{ log.user.username }}</strong></td>
+                <td>{{ log.action_type }}</td>
+                <td>{{ log.description }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer-doc">
+        <p>Примечание: Данный протокол является машиночитаемым документом строгой отчетности. Все записи в журнале защищены от удаления и корректировки на уровне БД.</p>
+        <table class="sig-block">
+            <tr>
+                <td>Администратор системы: <span class="underline"></span> / ({{ generated_by }}) /</td>
+                <td style="text-align: right;">М.П.</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

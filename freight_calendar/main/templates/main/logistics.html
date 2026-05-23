@@ -4,62 +4,57 @@
 
 {% block extra_css %}
 <style>
+    :root {
+        --slate-50: #f8fafc;
+        --slate-200: #e2e8f0;
+        --slate-600: #475569;
+    }
+
+    /* Панель фильтров */
+    .filter-card {
+        background: white;
+        border: 1px solid var(--glass-border);
+        border-radius: 1rem;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label-erp {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--slate-600);
+        margin-bottom: 0.4rem;
+    }
+
+    /* Стили сортировки в заголовках */
+    .table thead th a {
+        color: var(--slate-600) !important;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: 0.2s;
+    }
+    .table thead th a:hover { color: var(--brand-color) !important; }
+    .table thead th i { font-size: 0.8rem; color: var(--brand-color); }
+
     /* Метрики */
     .metric-card {
         background: #ffffff;
         border: 1px solid var(--glass-border);
         border-radius: 0.75rem;
-        padding: 1.25rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        padding: 1rem;
     }
-    .metric-label {
+    .metric-value { font-size: 1.4rem; font-weight: 700; }
+
+    .status-pill {
         font-size: 0.7rem;
         font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--text-muted);
-        margin-bottom: 0.25rem;
-    }
-    .metric-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-main);
-        line-height: 1;
-    }
-
-    /* Таблица */
-    .data-table-container {
-        background: #ffffff;
-        border: 1px solid var(--glass-border);
-        border-radius: 1rem;
-        overflow: hidden;
-    }
-    .table thead th {
-        background: #f8fafc;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        padding: 1rem;
-        border-bottom: 1px solid var(--glass-border);
-    }
-    .table td {
-        padding: 1rem;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 0.9rem;
-    }
-
-    /* Статусы в стиле ERP */
-    .status-pill {
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 0.35rem 0.75rem;
+        padding: 0.3rem 0.6rem;
         border-radius: 6px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
+        text-transform: uppercase;
     }
     .status-pending { background: #fffbeb; color: #9a3412; border: 1px solid #fed7aa; }
     .status-planned { background: #f0f9ff; color: #075985; border: 1px solid #bae6fd; }
@@ -67,49 +62,17 @@
     .status-delivered { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
     .status-canceled { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
-    /* Режим редактирования */
-    .row-editing { background-color: #fffdf5; }
+    .tr-edit { background-color: #fffdf5; }
     .edit-input {
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--slate-200);
         border-radius: 6px;
-        padding: 0.4rem 0.75rem;
+        padding: 0.3rem 0.5rem;
         font-size: 0.85rem;
         width: 100%;
-        transition: border-color 0.2s;
-    }
-    .edit-input:focus {
-        outline: none;
-        border-color: var(--brand-color);
-        box-shadow: 0 0 0 2px rgba(146, 68, 122, 0.1);
     }
     .editing-only { display: none !important; }
-    .tr-edit .editing-only { display: inline-flex !important; }
+    .tr-edit .editing-only { display: block !important; }
     .tr-edit .view-only { display: none !important; }
-
-    /* Кнопки действий */
-    .btn-icon {
-        width: 32px;
-        height: 32px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        background: white;
-        color: var(--text-muted);
-        transition: all 0.2s;
-    }
-    .btn-icon:hover {
-        background: var(--brand-light);
-        color: var(--brand-color);
-        border-color: var(--brand-color);
-    }
-    .btn-icon-danger:hover {
-        background: #fef2f2;
-        color: #ef4444;
-        border-color: #fecaca;
-    }
 </style>
 {% endblock %}
 
@@ -118,80 +81,131 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 fw-bold mb-1">Управление заказами</h1>
-            <p class="text-muted small mb-0">Модуль обработки и контроля операционного портфеля заказов</p>
+            <h1 class="h3 fw-bold mb-1">Портфель заказов</h1>
+            <p class="text-muted small mb-0">Оперативное управление и мониторинг доставок</p>
         </div>
-        <a href="{% url 'order_create' %}" class="btn btn-primary d-flex align-items-center gap-2 px-4 py-2" style="background: var(--brand-color); border: none; border-radius: 10px;">
-            <i class="bi bi-plus-lg"></i>
-            <span class="fw-bold">Создать заказ</span>
+        <a href="{% url 'order_create' %}" class="btn btn-primary d-flex align-items-center gap-2 px-4" style="background: var(--brand-color); border: none; border-radius: 10px; height: 45px;">
+            <i class="bi bi-plus-lg"></i> <span class="fw-bold">Создать заказ</span>
         </a>
     </div>
 
-    <!-- Stats Bar -->
+    <!-- Stats -->
     <div class="row g-3 mb-4">
+        {% for label, val, color in stats %}
         <div class="col-md">
             <div class="metric-card shadow-sm">
-                <span class="metric-label">Ожидают</span>
-                <span class="metric-value" style="color: #d97706;">{{ count_pending }}</span>
+                <div class="small fw-bold text-muted text-uppercase mb-1" style="font-size: 0.65rem;">{{ label }}</div>
+                <div class="metric-value" style="color: {{ color }};">{{ val }}</div>
+            </div>
+        </div>
+        {% endfor %}
+        <!-- Пример ручного вывода, если цикл не подходит -->
+        <div class="col-md">
+            <div class="metric-card shadow-sm">
+                <div class="small fw-bold text-muted text-uppercase mb-1" style="font-size: 0.65rem;">Ожидают</div>
+                <div class="metric-value text-warning">{{ count_pending }}</div>
             </div>
         </div>
         <div class="col-md">
             <div class="metric-card shadow-sm">
-                <span class="metric-label">В плане</span>
-                <span class="metric-value" style="color: #0284c7;">{{ count_planned }}</span>
-            </div>
-        </div>
-        <div class="col-md">
-            <div class="metric-card shadow-sm">
-                <span class="metric-label">В пути</span>
-                <span class="metric-value" style="color: #7c3aed;">{{ count_in_transit }}</span>
-            </div>
-        </div>
-        <div class="col-md">
-            <div class="metric-card shadow-sm">
-                <span class="metric-label">Готово</span>
-                <span class="metric-value" style="color: #16a34a;">{{ count_delivered }}</span>
+                <div class="small fw-bold text-muted text-uppercase mb-1" style="font-size: 0.65rem;">В плане</div>
+                <div class="metric-value text-info">{{ count_planned }}</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="metric-card shadow-sm bg-dark">
-                <span class="metric-label text-white-50">Всего в базе</span>
-                <div class="d-flex align-items-center justify-content-between">
-                    <span class="metric-value text-white">{{ total_orders }}</span>
-                    <i class="bi bi-database text-white-50 fs-4"></i>
+            <div class="metric-card shadow-sm bg-dark text-white">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="small fw-bold text-uppercase mb-1" style="font-size: 0.65rem; opacity: 0.7;">Всего в реестре</div>
+                        <div class="metric-value">{{ total_orders }}</div>
+                    </div>
+                    <i class="bi bi-database-fill fs-3 opacity-25"></i>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Table -->
-    <div class="data-table-container shadow-sm">
+    <!-- ФИЛЬТРЫ -->
+    <div class="filter-card shadow-sm border-0">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-lg-3">
+                <label class="form-label-erp">Поиск по адресу / ID</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control border-start-0 bg-light" placeholder="Найти..." value="{{ request.GET.q }}">
+                </div>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label-erp">Статус заказа</label>
+                <select name="status" class="form-select form-select-sm bg-light">
+                    <option value="">Все статусы</option>
+                    <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>Ожидает</option>
+                    <option value="planned" {% if request.GET.status == 'planned' %}selected{% endif %}>Запланирован</option>
+                    <option value="shipped" {% if request.GET.status == 'shipped' %}selected{% endif %}>В пути</option>
+                    <option value="delivered" {% if request.GET.status == 'delivered' %}selected{% endif %}>Доставлен</option>
+                    <option value="canceled" {% if request.GET.status == 'canceled' %}selected{% endif %}>Отменен</option>
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label-erp">Дата доставки</label>
+                <input type="date" name="date" class="form-control form-control-sm bg-light" value="{{ request.GET.date }}">
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label-erp">Мин. вес (кг)</label>
+                <input type="number" name="min_weight" class="form-control form-control-sm bg-light" value="{{ request.GET.min_weight }}">
+            </div>
+            <div class="col-lg-3 d-flex gap-2">
+                <button type="submit" class="btn btn-dark btn-sm flex-grow-1 fw-bold">Применить</button>
+                <a href="{% url 'logistics_dashboard' %}" class="btn btn-light btn-sm border px-3" title="Сбросить"><i class="bi bi-x-lg"></i></a>
+            </div>
+            <input type="hidden" name="sort" value="{{ current_sort }}">
+        </form>
+    </div>
+
+    <!-- Таблица -->
+    <div class="data-table-container shadow-sm border-0">
         <div class="table-responsive">
             <table class="table align-middle mb-0">
                 <thead>
                     <tr>
-                        <th width="80">ID</th>
-                        <th>Адрес доставки</th>
-                        <th width="200">Габариты (Объем/Вес)</th>
-                        <th width="180">Периодичность</th>
-                        <th width="160">Статус</th>
-                        <th width="100" class="text-end">Действия</th>
+                        <th width="100">
+                            <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}sort={% if current_sort == 'id' %}-id{% else %}id{% endif %}">
+                                ID {% if current_sort == 'id' %}<i class="bi bi-sort-down"></i>{% elif current_sort == '-id' %}<i class="bi bi-sort-up"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort={% if current_sort == 'address' %}-address{% else %}address{% endif %}">
+                                Адрес доставки {% if current_sort == 'address' %}<i class="bi bi-sort-alpha-down"></i>{% elif current_sort == '-address' %}<i class="bi bi-sort-alpha-up-alt"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th width="200">
+                            <a href="?sort={% if current_sort == 'weight' %}-weight{% else %}weight{% endif %}">
+                                Параметры {% if current_sort == 'weight' %}<i class="bi bi-sort-numeric-down"></i>{% elif current_sort == '-weight' %}<i class="bi bi-sort-numeric-up"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th width="180">
+                            <a href="?sort={% if current_sort == 'delivery_data' %}-delivery_data{% else %}delivery_data{% endif %}">
+                                Дата / Цикл {% if current_sort == 'delivery_data' %}<i class="bi bi-calendar-event"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th width="150">Статус</th>
+                        <th width="100" class="text-end pe-4">Действия</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for order in orders %}
-                    <tr id="row-{{ order.id }}" class="transition-all">
-                        <td class="text-muted fw-medium small">#{{ order.id }}</td>
+                    <tr id="row-{{ order.id }}">
+                        <td class="text-muted fw-bold small">#{{ order.id }}</td>
                         <td>
                             <div class="view-only fw-bold text-dark">{{ order.address }}</div>
                             <input type="text" id="addr-{{ order.id }}" class="edit-input editing-only" value="{{ order.address }}">
                         </td>
                         <td>
-                            <div class="view-only d-flex gap-2">
-                                <span class="small fw-semibold text-muted"><i class="bi bi-box"></i> {{ order.volume }} м³</span>
-                                <span class="small fw-semibold text-muted"><i class="bi bi-speedometer2"></i> {{ order.weight }} кг</span>
+                            <div class="view-only small text-muted">
+                                <div><i class="bi bi-box me-1"></i>{{ order.volume }} м³</div>
+                                <div><i class="bi bi-speedometer2 me-1"></i>{{ order.weight }} кг</div>
                             </div>
-                            <div class="editing-only d-flex gap-2">
+                            <div class="editing-only d-flex gap-1">
                                 <input type="number" step="0.1" id="vol-{{ order.id }}" class="edit-input" value="{{ order.volume|stringformat:'.1f' }}">
                                 <input type="number" step="0.1" id="wei-{{ order.id }}" class="edit-input" value="{{ order.weight|stringformat:'.1f' }}">
                             </div>
@@ -199,36 +213,36 @@
                         <td>
                             <div class="view-only">
                                 {% if order.delivery_type == 'urgent' %}
-                                    <span class="text-danger small fw-bold text-uppercase"><i class="bi bi-lightning-fill"></i> Срочно</span>
-                                    <div class="text-muted x-small">{{ order.delivery_data|date:"d.m.Y" }}</div>
+                                    <span class="text-danger small fw-bold"><i class="bi bi-lightning-fill"></i> {{ order.delivery_data|date:"d.m.Y" }}</span>
                                 {% else %}
-                                    <span class="text-primary small fw-bold text-uppercase"><i class="bi bi-arrow-repeat"></i> {{ order.get_frequency_display }}</span>
-                                    <div class="text-muted x-small">Старт: {{ order.delivery_data|date:"d.m.Y" }}</div>
+                                    <span class="text-primary small fw-bold"><i class="bi bi-arrow-repeat"></i> {{ order.get_frequency_display }}</span>
+                                    <div class="text-muted" style="font-size: 0.7rem;">{{ order.delivery_data|date:"d.m" }}</div>
                                 {% endif %}
                             </div>
                             <input type="date" id="date-{{ order.id }}" class="edit-input editing-only" value="{{ order.delivery_data|date:'Y-m-d' }}">
                         </td>
                         <td>
-                            <div class="view-only status-pill status-{{ order.status }}">
-                                <i class="bi bi-circle-fill" style="font-size: 0.4rem;"></i>
+                            <div class="view-only status-pill status-{{ order.status }} text-center">
                                 {{ order.get_status_display }}
                             </div>
                             <select id="stat-{{ order.id }}" class="edit-input editing-only">
                                 <option value="{{ order.status }}">{{ order.get_status_display }}</option>
-                                {% if order.status != 'canceled' %}<option value="canceled">Отменен</option>{% endif %}
+                                {% if order.status != 'canceled' %}<option value="canceled">Отменить</option>{% endif %}
                             </select>
                         </td>
-                        <td class="text-end">
-                            <div class="view-only d-flex justify-content-end gap-1">
-                                <button onclick="toggleEdit('{{ order.id }}')" class="btn-icon" title="Редактировать"><i class="bi bi-pencil-square"></i></button>
-                                <button onclick="confirmDelete('{{ order.id }}')" class="btn-icon btn-icon-danger" title="Удалить"><i class="bi bi-trash"></i></button>
+                        <td class="text-end pe-4">
+                            <div class="view-only d-flex justify-content-end gap-2">
+                                <button onclick="toggleEdit('{{ order.id }}')" class="btn-icon"><i class="bi bi-pencil"></i></button>
+                                <button onclick="confirmDelete('{{ order.id }}')" class="btn-icon btn-icon-danger"><i class="bi bi-trash"></i></button>
                             </div>
                             <div class="editing-only d-flex justify-content-end gap-1">
-                                <button onclick="saveInline('{{ order.id }}')" class="btn-icon" style="color: #16a34a; border-color: #bbf7d0;"><i class="bi bi-check-lg"></i></button>
-                                <button onclick="toggleEdit('{{ order.id }}')" class="btn-icon" style="color: #ef4444; border-color: #fecaca;"><i class="bi bi-x-lg"></i></button>
+                                <button onclick="saveInline('{{ order.id }}')" class="btn btn-sm btn-success px-2"><i class="bi bi-check-lg"></i></button>
+                                <button onclick="toggleEdit('{{ order.id }}')" class="btn btn-sm btn-light border px-2"><i class="bi bi-x"></i></button>
                             </div>
                         </td>
                     </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-5 text-muted">Заказы не найдены</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -236,35 +250,30 @@
     </div>
 </div>
 
-<!-- Модалка удаления в стиле Bootstrap 5 -->
+<!-- Модалка удаления -->
 <div class="modal fade" id="deleteModalNative" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content" style="border-radius: 1.25rem;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
             <div class="modal-body p-4 text-center">
-                <div class="text-danger mb-3"><i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i></div>
-                <h5 class="fw-bold">Удалить заказ?</h5>
-                <p class="text-muted small">Данные о заказе будут удалены из системы безвозвратно.</p>
+                <div class="text-danger mb-3"><i class="bi bi-exclamation-octagon fs-1"></i></div>
+                <h6 class="fw-bold">Удалить запись?</h6>
+                <p class="text-muted small">Данное действие нельзя будет отменить.</p>
                 <div class="d-grid gap-2 mt-4">
-                    <button id="confirmDeleteBtn" class="btn btn-danger py-2 fw-bold" style="border-radius: 10px;">Подтвердить</button>
-                    <button type="button" class="btn btn-light py-2 text-muted fw-bold" data-bs-dismiss="modal">Отмена</button>
+                    <button id="confirmDeleteBtn" class="btn btn-danger btn-sm fw-bold">Удалить</button>
+                    <button type="button" class="btn btn-light btn-sm border" data-bs-dismiss="modal">Отмена</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Переключение режима
     function toggleEdit(id) {
-        const row = document.getElementById(`row-${id}`);
-        row.classList.toggle('tr-edit');
-        row.classList.toggle('row-editing');
+        document.getElementById(`row-${id}`).classList.toggle('tr-edit');
     }
 
-    // Сохранение
     async function saveInline(id) {
         const data = {
             address: document.getElementById(`addr-${id}`).value,
@@ -273,46 +282,22 @@
             delivery_data: document.getElementById(`date-${id}`).value,
             status: document.getElementById(`stat-${id}`).value
         };
-
-        try {
-            const response = await fetch(`/logistics/management/orders/${id}/update-inline/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-            if (response.ok) {
-                location.reload();
-            } else {
-                alert("Ошибка при сохранении");
-            }
-        } catch (e) {
-            alert("Ошибка сети");
-        }
+        const response = await fetch(`/logistics/management/orders/${id}/update-inline/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (response.ok) location.reload();
     }
 
-    // Удаление через нативный Bootstrap Modal
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModalNative'));
-    let idToDelete = null;
-
-    function confirmDelete(id) {
-        idToDelete = id;
-        deleteModal.show();
-    }
-
+    const dModal = new bootstrap.Modal(document.getElementById('deleteModalNative'));
+    let activeDeleteId = null;
+    function confirmDelete(id) { activeDeleteId = id; dModal.show(); }
     document.getElementById('confirmDeleteBtn').onclick = async () => {
-        if (!idToDelete) return;
-        try {
-            const response = await fetch(`/logistics/management/orders/${idToDelete}/delete/`, {
-                method: 'POST',
-                headers: {'X-CSRFToken': '{{ csrf_token }}'}
-            });
-            if (response.ok) location.reload();
-        } catch (e) {
-            alert("Ошибка соединения");
-        }
+        await fetch(`/logistics/management/orders/${activeDeleteId}/delete/`, {
+            method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        });
+        location.reload();
     };
 </script>
 {% endblock %}

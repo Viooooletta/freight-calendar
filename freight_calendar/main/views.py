@@ -29,6 +29,7 @@ from django.template.loader import render_to_string
 
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
+from django.db.models import Q
 
 
 @login_required
@@ -225,14 +226,39 @@ def check_order_fits_day(order, target_date):
 
 @login_required
 def logistics_view(request):
-    orders = Order.objects.all().order_by('-id')
+    if request.user.role not in ['logistics', 'admin']:
+        raise PermissionDenied
 
-    # Фильтры
-    if request.GET.get('address'): orders = orders.filter(address__icontains=request.GET.get('address'))
-    if request.GET.get('date'): orders = orders.filter(delivery_data=request.GET.get('date'))
-    if request.GET.get('volume'): orders = orders.filter(volume__gte=request.GET.get('volume'))
-    if request.GET.get('weight'): orders = orders.filter(weight__gte=request.GET.get('weight'))
+    # 1. Базовый запрос
+    orders = Order.objects.all()
 
+    # 2. Живой поиск (по адресу или ID)
+    q = request.GET.get('q')
+    if q:
+        orders = orders.filter(
+            Q(address__icontains=q) | Q(id__icontains=q)
+        )
+
+    # 3. Фильтрация
+    status_filter = request.GET.get('status')
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+
+    date_filter = request.GET.get('date')
+    if date_filter:
+        orders = orders.filter(delivery_data=date_filter)
+
+    min_weight = request.GET.get('min_weight')
+    if min_weight:
+        orders = orders.filter(weight__gte=min_weight)
+
+    # 4. Сортировка
+    sort = request.GET.get('sort', '-id')  # По умолчанию новые сверху
+    allowed_sort = ['id', '-id', 'address', '-address', 'weight', '-weight', 'volume', '-volume', 'delivery_data', '-delivery_data']
+    if sort in allowed_sort:
+        orders = orders.order_by(sort)
+
+    # Статистика для карточек (всегда считаем от полной базы или отфильтрованной - по выбору, обычно от полной)
     context = {
         'orders': orders,
         'count_pending': Order.objects.filter(status='pending').count(),
@@ -240,6 +266,7 @@ def logistics_view(request):
         'count_in_transit': Order.objects.filter(status='shipped').count(),
         'count_delivered': Order.objects.filter(status='delivered').count(),
         'total_orders': Order.objects.count(),
+        'current_sort': sort,
     }
     return render(request, 'main/logistics.html', context)
 
@@ -372,10 +399,7 @@ def generate_plan_view(request):
 
 @login_required
 def suggest_optimal_date_api(request, pk):
-    """
-    ЛОГИКА КНОПКИ 'МАГИЯ' (🪄):
-    Ищет ближайший день в будущем, где есть реальная мощность под этот заказ.
-    """
+
     try:
         order = get_object_or_404(Order, pk=pk)
         start_search = order.delivery_data + timedelta(days=1)
@@ -391,7 +415,7 @@ def suggest_optimal_date_api(request, pk):
                 return JsonResponse({
                     'status': 'success',
                     'optimal_date': test_date.isoformat(),
-                    'message': f'✨ Магия сработала! Найдено свободное место на {test_date.strftime("%d.%m.%Y")}.'
+                    'message': f'Найдено свободное место на {test_date.strftime("%d.%m.%Y")}.'
                 })
 
         return JsonResponse({
@@ -675,14 +699,46 @@ def update_order_status_ajax(request, pk):
 
 @login_required
 def transport_view(request):
-    vehicles = Vehicle.objects.all().order_by('-id')
-    # Фильтры
-    if request.GET.get('search'): vehicles = vehicles.filter(name__icontains=request.GET.get('search'))
-    if request.GET.get('min_volume'): vehicles = vehicles.filter(
-        capacity_volume__gte=float(request.GET.get('min_volume')))
-    if request.GET.get('min_weight'): vehicles = vehicles.filter(
-        capacity_weight__gte=float(request.GET.get('min_weight')))
-    return render(request, 'main/transport.html', {'vehicles': vehicles})
+    # 1. Базовый запрос
+    vehicles = Vehicle.objects.all()
+
+    # 2. Фильтрация (сохраняем существующую логику)
+    search_query = request.GET.get('search')
+    if search_query:
+        vehicles = vehicles.filter(name__icontains=search_query)
+
+    min_vol = request.GET.get('min_volume')
+    if min_vol:
+        try:
+            vehicles = vehicles.filter(capacity_volume__gte=float(min_vol))
+        except ValueError:
+            pass
+
+    min_weight = request.GET.get('min_weight')
+    if min_weight:
+        try:
+            vehicles = vehicles.filter(capacity_weight__gte=float(min_weight))
+        except ValueError:
+            pass
+
+    # 3. СОРТИРОВКА
+    sort = request.GET.get('sort', '-id')  # По умолчанию новые сверху
+    allowed_sort_fields = [
+        'id', '-id',
+        'name', '-name',
+        'capacity_weight', '-capacity_weight',
+        'capacity_volume', '-capacity_volume'
+    ]
+
+    if sort in allowed_sort_fields:
+        vehicles = vehicles.order_by(sort)
+    else:
+        vehicles = vehicles.order_by('-id')
+
+    return render(request, 'main/transport.html', {
+        'vehicles': vehicles,
+        'current_sort': sort
+    })
 
 
 @login_required
@@ -1029,9 +1085,52 @@ def transport_calendar_events_api(request):
 
 @staff_member_required
 def admin_users_list(request):
-    if request.user.role != 'admin': raise PermissionDenied
-    return render(request, 'main/admin_users.html', {'users': CustomUser.objects.all().order_by('-id')})
+    if request.user.role != 'admin':
+        raise PermissionDenied
 
+    # 1. Базовый запрос
+    users = CustomUser.objects.all()
+
+    # 2. Фильтрация (Поиск)
+    search_query = request.GET.get('q')
+    if search_query:
+        users = users.filter(
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+
+    # 3. Фильтр по роли
+    role_filter = request.GET.get('role')
+    if role_filter:
+        users = users.filter(role=role_filter)
+
+    # 4. Фильтр по статусу
+    status_filter = request.GET.get('status')
+    if status_filter:
+        users = users.filter(is_active=(status_filter == 'active'))
+
+    # 5. СОРТИРОВКА
+    # Получаем параметр sort, по умолчанию сортируем по ID (новые сверху)
+    sort = request.GET.get('sort', '-id')
+
+    # Список разрешенных полей для сортировки (безопасность)
+    allowed_sort_fields = [
+        'username', '-username',
+        'email', '-email',
+        'role', '-role',
+        'is_active', '-is_active',
+        'is_staff', '-is_staff',
+        'id', '-id'
+    ]
+
+    if sort in allowed_sort_fields:
+        users = users.order_by(sort)
+
+    return render(request, 'main/admin_users.html', {
+        'users': users,
+        'role_choices': CustomUser.ROLE_CHOICES,
+        'current_sort': sort  # Передаем в шаблон, чтобы подсветить стрелочки
+    })
 
 @staff_member_required
 @require_POST
@@ -1091,18 +1190,81 @@ def fire_user_ajax(request, pk):
 
 
 @staff_member_required
-def event_log_view(request):
-    if request.user.role != 'admin': raise PermissionDenied
+def print_audit_report(request):
+    """Генерация данных для печати отчета (глобального или персонального)"""
+    user_id = request.GET.get('user_id')
+
+    if user_id:
+        # Отчет по конкретному сотруднику
+        target_user = get_object_or_404(CustomUser, id=user_id)
+        logs = ActionLog.objects.filter(user=target_user).order_by('-timestamp')
+        report_title = f"ПЕРСОНАЛЬНЫЙ ОТЧЕТ ПО СОТРУДНИКУ: {target_user.username.upper()}"
+    else:
+        # Глобальный отчет
+        logs = ActionLog.objects.all().select_related('user').order_by('-timestamp')[:500]  # Лимит для печати
+        report_title = "ГЛОБАЛЬНЫЙ ОТЧЕТ ПО ВСЕМ СОБЫТИЯМ СИСТЕМЫ"
+
     context = {
-        'users': CustomUser.objects.annotate(log_count=Count('actionlog')).order_by('-log_count'),
+        'logs': logs,
+        'report_title': report_title,
+        'print_date': timezone.now(),
+        'generated_by': request.user.username,
+        'total_records': logs.count()
+    }
+    return render(request, 'main/audit_report_print.html', context)
+
+@staff_member_required
+def event_log_view(request):
+    if request.user.role != 'admin':
+        raise PermissionDenied
+
+    # 1. Фильтрация и сортировка сотрудников
+    users = CustomUser.objects.annotate(log_count=Count('actionlog'))
+
+    # Поиск по имени
+    q = request.GET.get('q')
+    if q:
+        users = users.filter(username__icontains=q)
+
+    # Сортировка (по активности или имени)
+    sort = request.GET.get('sort', '-log_count')
+    if sort in ['username', '-username', 'log_count', '-log_count']:
+        users = users.order_by(sort)
+
+    # 2. Глобальная лента (последние 50 действий в системе для новой фичи)
+    global_logs = ActionLog.objects.all().select_related('user').order_by('-timestamp')[:50]
+
+    context = {
+        'users': users,
+        'global_logs': global_logs,
         'total_actions': ActionLog.objects.count(),
         'today_actions': ActionLog.objects.filter(timestamp__date=timezone.now().date()).count(),
         'top_user': CustomUser.objects.annotate(log_count=Count('actionlog')).order_by('-log_count').first(),
-        'logs': ActionLog.objects.all().order_by('-timestamp')[:100]  # Последние 100 записей
     }
     return render(request, 'main/admin_log.html', context)
 
 
+@staff_member_required
+def system_audit_print_view(request):
+    """Официальная печатная форма системного журнала (Админ)"""
+    user_id = request.GET.get('user_id')
+
+    if user_id:
+        target_user = get_object_or_404(CustomUser, id=user_id)
+        logs = ActionLog.objects.filter(user=target_user).order_by('-timestamp')
+        report_title = f"ПЕРСОНАЛЬНЫЙ ПРОТОКОЛ ДЕЙСТВИЙ СОТРУДНИКА: {target_user.username.upper()}"
+    else:
+        logs = ActionLog.objects.all().select_related('user').order_by('-timestamp')[:500]
+        report_title = "СВОДНЫЙ ОТЧЕТ ПО СОБЫТИЯМ СИСТЕМЫ (AUDIT TRAIL)"
+
+    context = {
+        'logs': logs,
+        'report_title': report_title,
+        'print_date': timezone.now(),
+        'generated_by': request.user.username,
+        'total_records': logs.count()
+    }
+    return render(request, 'main/system_audit_print.html', context)
 @staff_member_required
 def user_history_api(request, user_id):
     """Возвращает HTML историю конкретного пользователя для модалки"""
@@ -1138,3 +1300,36 @@ def get_driver_data_api(request, pk):
         'shifts': sched_dict,
         'absences': abs_list
     })
+
+
+@staff_member_required
+@require_POST
+def create_user_ajax(request):
+    """Создание нового сотрудника администратором"""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        role = data.get('role', 'logistics')
+
+        if not username or not password:
+            return JsonResponse({'status': 'error', 'message': 'Логин и пароль обязательны'}, status=400)
+
+        if CustomUser.objects.filter(username=username).exists():
+            return JsonResponse({'status': 'error', 'message': 'Пользователь с таким логином уже существует'},
+                                status=400)
+
+        # Создаем пользователя
+        user = CustomUser.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            role=role,
+            is_active=True  # Админ создает сразу активного
+        )
+
+        log_action(request.user, "Создание персонала", f"Создан аккаунт для {username} ({role})")
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

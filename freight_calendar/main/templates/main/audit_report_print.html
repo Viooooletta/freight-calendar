@@ -1,0 +1,65 @@
+<!-- Измененный Header в admin_log.html -->
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <h1 class="h2 fw-bold text-slate-900 mb-1">Системный аудит</h1>
+        <p class="text-muted small mb-0">Централизованный мониторинг ответственности персонала</p>
+    </div>
+    <button class="btn btn-white border fw-bold shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#reportChoiceModal">
+        <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Сформировать отчет
+    </button>
+</div>
+
+<!-- НОВАЯ МОДАЛКА: Выбор типа отчета -->
+<div class="modal fade" id="reportChoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header p-4 border-0">
+                <h5 class="fw-bold mb-0">Параметры формирования отчета</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 pt-0">
+                <div class="row g-3">
+                    <!-- Вариант 1: По всем -->
+                    <div class="col-12">
+                        <a href="{% url 'print_audit_report' %}" target="_blank" class="card p-3 text-decoration-none border hover-shadow transition-all bg-light">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-primary text-white rounded-3 p-2"><i class="bi bi-globe"></i></div>
+                                <div>
+                                    <div class="fw-bold text-dark">Общий сводный отчет</div>
+                                    <div class="small text-muted">Включает все действия всех сотрудников</div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-12 text-center py-2"><span class="small text-muted fw-bold">ИЛИ</span></div>
+
+                    <!-- Вариант 2: По одному -->
+                    <div class="col-12">
+                        <div class="card p-3 border shadow-none bg-white">
+                            <label class="small fw-bold text-muted text-uppercase mb-2">Выберите сотрудника для печати:</label>
+                            <div class="input-group input-group-sm mb-3">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                                <input type="text" id="userSearchPrint" class="form-control border-start-0" placeholder="Поиск по штату..." onkeyup="filterUsersForPrint()">
+                            </div>
+                            <div id="printUserList" style="max-height: 200px; overflow-y: auto;">
+                                {% for u in users %}
+                                <div class="user-select-item p-2 border-bottom d-flex justify-content-between align-items-center" data-username="{{ u.username|lower }}">
+                                    <span class="small fw-bold text-dark">{{ u.username }}</span>
+                                    <a href="{% url 'print_audit_report' %}?user_id={{ u.id }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2 small">Выбрать</a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Дополнительные стили для модалки выбора */
+    .user-select-item:hover { background: #f8fafc; }
+    .hover-shadow:hover { box-shadow: 0 10px 15px rgba(0,0,0,0.05); border-color: var(--brand-color) !important; }
+</style>

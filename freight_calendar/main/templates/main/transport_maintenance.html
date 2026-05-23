@@ -1,29 +1,50 @@
 {% extends 'main/base_dashboard.html' %}
 {% load l10n %}
 
-{% block title %}Аналитика мощностей и ТО | Freight Calendar{% endblock %}
+{% block title %}Аналитика мощностей автопарка | FreightCal ERP{% endblock %}
 
 {% block extra_css %}
 <style>
     :root {
-        --ring-size: 100px;
-        --ring-stroke: 8;
+        --ring-size: 110px;
+        --ring-stroke: 7;
+        --slate-50: #f8fafc;
+        --slate-200: #e2e8f0;
+        --slate-600: #475569;
+        --slate-900: #0f172a;
     }
 
-    .btn-white {
-        background-color: #ffffff;
-        color: #6c757d;
-        transition: all 0.2s;
-        border: 1px solid #dee2e6;
+    .page-header {
+        border-bottom: 1px solid var(--slate-200);
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
     }
 
-    .btn-white:hover {
-        background-color: #f8f9fa;
-        color: var(--brand-color);
-        border-color: var(--brand-color);
+    /* Аналитические карточки */
+    .dashboard-card {
+        background: white;
+        border: 1px solid var(--glass-border);
+        border-radius: 1rem;
+        height: 100%;
     }
 
-    .progress-ring {
+    .metric-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--slate-600);
+    }
+
+    .metric-value-lg {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-weight: 700;
+        color: var(--slate-900);
+        letter-spacing: -0.02em;
+    }
+
+    /* Прогресс-кольца */
+    .progress-ring-wrapper {
         position: relative;
         width: var(--ring-size);
         height: var(--ring-size);
@@ -38,207 +59,272 @@
     .progress-ring circle {
         fill: none;
         stroke-width: var(--ring-stroke);
+        stroke-linecap: round;
     }
 
-    .progress-ring .bg {
-        stroke: #f0f2f5;
-    }
-
+    .progress-ring .bg { stroke: var(--slate-100); }
     .progress-ring .bar {
         stroke-dasharray: 282.6;
-        transition: stroke-dashoffset 0.8s ease-in-out;
+        transition: stroke-dashoffset 1s ease-in-out;
     }
 
-    .percent-text {
+    .progress-ring .percentage {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        font-size: 1.2rem;
+        font-size: 1.25rem;
         font-weight: 800;
+        color: var(--slate-900);
     }
 
-    .color-high { stroke: #198754; color: #198754; }
-    .color-medium { stroke: #ffc107; color: #ffc107; }
-    .color-low { stroke: #dc3545; color: #dc3545; }
-
-    .vehicle-card {
-        transition: all 0.3s ease;
-        border: 1px solid transparent;
+    /* Карточки автомобилей */
+    .vehicle-status-card {
+        transition: all 0.2s ease;
+        border: 1px solid var(--slate-200);
+        border-radius: 1rem;
+        text-decoration: none !important;
+        color: inherit !important;
     }
-    .vehicle-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important;
+
+    .vehicle-status-card:hover {
         border-color: var(--brand-color);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        transform: translateY(-2px);
     }
 
-    .kpi-box {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        border: 1px solid #edf2f7;
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+
+    .dot-success { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
+    .dot-danger { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+    /* Таблица логов */
+    .table-clean thead th {
+        background: var(--slate-50);
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        color: var(--slate-600);
+        padding: 1rem;
+        border: none;
+    }
+
+    .table-clean tbody td {
+        padding: 1.2rem 1rem;
+        border-bottom: 1px solid var(--slate-50);
+        font-size: 0.9rem;
+    }
+
+    .badge-outline {
+        background: transparent;
+        border: 1px solid var(--slate-200);
+        color: var(--slate-600);
+        font-weight: 600;
+        padding: 0.4rem 0.7rem;
     }
 </style>
 {% endblock %}
 
-
-
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="mb-4">
-        <span class="badge mb-2" style="background: var(--brand-light); color: var(--brand-color); font-weight: 700; letter-spacing: 1px;">FLEET CAPACITY & MAINTENACE</span>
-        <h1 class="fw-bold">Аналитика мощностей</h1>
+<div class="container-fluid">
+
+    <!-- Заголовок -->
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item small fw-bold text-muted text-uppercase">Fleet Dept</li>
+                    <li class="breadcrumb-item small fw-bold active text-primary text-uppercase">Capacity Analytics</li>
+                </ol>
+            </nav>
+            <h1 class="h2 fw-bold text-slate-900 mb-0">Мощности автопарка</h1>
+        </div>
+        <div class="text-end">
+            <div class="bg-white p-2 rounded-3 shadow-sm border d-inline-flex align-items-center">
+                <i class="bi bi-calendar3 me-2 text-primary"></i>
+                <form method="get" id="dateForm" class="m-0">
+                    <input type="date" name="date" class="form-control form-control-sm border-0 fw-bold"
+                           value="{{ selected_date|date:'Y-m-d' }}" onchange="this.form.submit()">
+                </form>
+            </div>
+        </div>
     </div>
 
-    <!-- ВЕРХНЯЯ ПАНЕЛЬ: АНАЛИТИКА И ФИЛЬТР -->
-    <div class="card shadow-sm border-0 rounded-4 mb-5">
-        <div class="card-body p-4">
-            <div class="row align-items-center g-4">
-                <!-- Календарь-фильтр -->
-                <div class="col-lg-3 col-md-4 border-end">
-                    <label class="small fw-bold text-muted text-uppercase mb-2 d-block">Контрольная дата</label>
-                    <form method="get" id="dateForm">
-                        <input type="date" name="date" class="form-control form-control-lg border-0 bg-light rounded-3"
-                               value="{{ selected_date|date:'Y-m-d' }}" onchange="this.form.submit()">
-                    </form>
-                    <p class="text-muted small mt-2 mb-0">Статистика парка пересчитывается на выбранный день.</p>
-                </div>
-
-                <!-- Чистая мощность на день -->
-                <div class="col-lg-4 col-md-8 border-end px-lg-4">
-                    <h6 class="fw-bold text-muted small text-uppercase mb-3">Доступно сегодня:</h6>
-                    <div class="vstack gap-2">
-                        <div class="d-flex justify-content-between align-items-center p-2 px-3 bg-white border rounded-3 shadow-sm">
-                            <span class="small fw-bold">📦 Объем</span>
-                            <div class="text-end">
-                                <span class="fw-bold fs-5">{{ actual_day_volume|floatformat:1 }} м³</span>
-                                {% if lost_day_volume > 0 %}
-                                <small class="text-danger d-block">-{{ lost_day_volume|floatformat:1 }} м³ (СТО)</small>
-                                {% endif %}
-                            </div>
+    <!-- Верхний дашборд -->
+    <div class="row g-4 mb-5">
+        <!-- Секция 1: Мощность на дату -->
+        <div class="col-lg-4">
+            <div class="dashboard-card p-4 shadow-sm">
+                <div class="metric-title mb-4">Доступная мощность (на выбранную дату)</div>
+                <div class="vstack gap-3">
+                    <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3">
+                        <span class="small fw-bold text-muted"><i class="bi bi-box-seam me-2"></i>Объем кузовов</span>
+                        <div class="text-end">
+                            <span class="fs-4 fw-bold text-slate-900">{{ actual_day_volume|floatformat:1 }} м³</span>
+                            {% if lost_day_volume > 0 %}
+                            <div class="text-danger fw-bold" style="font-size: 0.7rem;">-{{ lost_day_volume|floatformat:1 }} м³ (СТО)</div>
+                            {% endif %}
                         </div>
-                        <div class="d-flex justify-content-between align-items-center p-2 px-3 bg-white border rounded-3 shadow-sm">
-                            <span class="small fw-bold">⚖️ Вес</span>
-                            <div class="text-end">
-                                <span class="fw-bold fs-5">{{ actual_day_weight|floatformat:0 }} кг</span>
-                                {% if lost_day_weight > 0 %}
-                                <small class="text-danger d-block">-{{ lost_day_weight|floatformat:0 }} кг (СТО)</small>
-                                {% endif %}
-                            </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3">
+                        <span class="small fw-bold text-muted"><i class="bi bi-info-circle me-2"></i>Весовой лимит</span>
+                        <div class="text-end">
+                            <span class="fs-4 fw-bold text-slate-900">{{ actual_day_weight|floatformat:0 }} кг</span>
+                            {% if lost_day_weight > 0 %}
+                            <div class="text-danger fw-bold" style="font-size: 0.7rem;">-{{ lost_day_weight|floatformat:0 }} кг (СТО)</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- KPI Сохранности -->
-                <div class="col-lg-5 ps-lg-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold text-muted small text-uppercase mb-0">📊 Эффективность парка</h6>
-                        <div class="btn-group shadow-sm rounded-3">
-                            <a href="?date={{ prev_month_date }}" class="btn btn-white btn-sm">◀</a>
-                            <span class="btn btn-light btn-sm disabled text-dark fw-bold">{{ selected_date|date:"F Y" }}</span>
-                            <a href="?date={{ next_month_date }}" class="btn btn-white btn-sm">▶</a>
-                        </div>
+        <!-- Секция 2: Эффективность -->
+        <div class="col-lg-8">
+            <div class="dashboard-card p-4 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="metric-title">KPI Сохранности полезного объема</div>
+                    <div class="btn-group btn-group-sm">
+                        <a href="?date={{ prev_month_date }}" class="btn btn-white"><i class="bi bi-chevron-left"></i></a>
+                        <span class="btn btn-light disabled fw-bold">{{ selected_date|date:"F Y" }}</span>
+                        <a href="?date={{ next_month_date }}" class="btn btn-white"><i class="bi bi-chevron-right"></i></a>
                     </div>
+                </div>
 
-                    <div class="d-flex align-items-center gap-4">
-                        <div class="d-flex align-items-center gap-3 kpi-box p-2 px-3 rounded-4">
-                            <div class="progress-ring">
-                                <svg>
-                                    <circle class="bg" cx="50" cy="50" r="45"></circle>
-                                    <circle class="bar {{ color_month }}" cx="50" cy="50" r="45" stroke-dashoffset="{{ offset_month }}"></circle>
-                                </svg>
-                                <div class="percent-text {{ color_month }}">{{ pct_month_vol }}%</div>
+                <div class="row align-items-center">
+                    <div class="col-md-6 d-flex justify-content-center">
+                        <div class="d-flex align-items-center gap-4">
+                            <div class="progress-ring-wrapper">
+                                <div class="progress-ring">
+                                    <svg>
+                                        <circle class="bg" cx="55" cy="55" r="45"></circle>
+                                        <circle class="bar {{ color_month }}" cx="55" cy="55" r="45" stroke-dashoffset="{{ offset_month }}"></circle>
+                                    </svg>
+                                    <div class="percentage">{{ pct_month_vol }}%</div>
+                                </div>
                             </div>
                             <div>
-                                <span class="fw-bold d-block">Полезный объем</span>
-                                <small class="text-muted">за месяц</small>
+                                <div class="h5 fw-bold mb-1">Месячный показатель</div>
+                                <div class="small text-muted">Соотношение планового <br>и фактического объема парка</div>
                             </div>
                         </div>
-                        <p class="text-muted small mb-0">Процент времени, когда машины были в строю, а не в ремонте.</p>
+                    </div>
+                    <div class="col-md-6 border-start">
+                        <div class="ps-md-4">
+                            <p class="small text-slate-600 mb-4">Анализ показывает процент времени, когда транспорт находился в строю, а не на техническом обслуживании.</p>
+                            <div class="d-flex gap-4">
+                                <div>
+                                    <div class="small text-muted fw-bold">В строю</div>
+                                    <div class="h5 fw-bold text-success">{{ vehicles.count }} ед.</div>
+                                </div>
+                                <div>
+                                    <div class="small text-muted fw-bold">На сервисе</div>
+                                    <div class="h5 fw-bold text-danger">{{ maintenances.count }} зап.</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- СЕТКА АВТОМОБИЛЕЙ -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="fw-bold mb-0">Статус транспортных средств</h4>
-        <div class="text-muted small">Нажмите на карту для управления простоем</div>
+    <!-- Список машин -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h4 class="fw-bold text-slate-900 mb-0">Состояние транспортных средств</h4>
+        <div class="small text-muted fw-medium">ID и технические характеристики ТС</div>
     </div>
 
-    <div class="row g-4 mb-5">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-5">
         {% for vehicle in vehicles %}
-        <div class="col-xl-3 col-md-4 col-sm-6">
-            <a href="{% url 'vehicle_maintenance_detail' vehicle.id %}" class="text-decoration-none">
-                <div class="card h-100 vehicle-card shadow-sm border-0 rounded-4">
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between mb-3">
-                            <div class="bg-light p-2 rounded-3">🚛</div>
-                            <span class="text-muted small">#{{ vehicle.id }}</span>
+        <div class="col">
+            <a href="{% url 'vehicle_maintenance_detail' vehicle.id %}" class="card h-100 vehicle-status-card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="bg-light p-2 rounded-3 text-primary">
+                            <i class="bi bi-truck fs-4"></i>
                         </div>
-                        <h5 class="fw-bold text-dark mb-1">{{ vehicle.name }}</h5>
-                        <div class="vstack gap-1 mb-4">
-                            <small class="text-muted">Грузоподъемность: <strong>{{ vehicle.capacity_weight|floatformat:0 }} кг</strong></small>
-                            <small class="text-muted">Объем кузова: <strong>{{ vehicle.capacity_volume|floatformat:1 }} м³</strong></small>
-                        </div>
-
-                        {% if vehicle.is_busy %}
-                        <div class="badge bg-danger-subtle text-danger p-2 px-3 rounded-pill w-100 border border-danger-subtle">
-                            ⛔ На обслуживании (СТО)
-                        </div>
-                        {% else %}
-                        <div class="badge bg-success-subtle text-success p-2 px-3 rounded-pill w-100 border border-success-subtle">
-                            ✅ Готов к рейсам
-                        </div>
-                        {% endif %}
+                        <span class="text-muted small fw-bold">#{{ vehicle.id }}</span>
                     </div>
+
+                    <h5 class="fw-bold text-slate-900 mb-1">{{ vehicle.name }}</h5>
+                    <div class="mb-4">
+                        <div class="small text-muted mb-1"><i class="bi bi-arrow-up-right me-1"></i> {{ vehicle.capacity_weight|floatformat:0 }} кг</div>
+                        <div class="small text-muted"><i class="bi bi-box me-1"></i> {{ vehicle.capacity_volume|floatformat:1 }} м³</div>
+                    </div>
+
+                    {% if vehicle.is_busy %}
+                    <div class="badge bg-danger-subtle text-danger border border-danger-subtle w-100 py-2 rounded-2">
+                        <span class="status-dot dot-danger"></span> На обслуживании
+                    </div>
+                    {% else %}
+                    <div class="badge bg-success-subtle text-success border border-success-subtle w-100 py-2 rounded-2">
+                        <span class="status-dot dot-success"></span> В эксплуатации
+                    </div>
+                    {% endif %}
                 </div>
             </a>
         </div>
         {% endfor %}
     </div>
 
-    <!-- ЖУРНАЛ ПРОСТОЕВ -->
-    <div class="card shadow-sm border-0 rounded-4 bg-white">
-        <div class="card-body p-4">
-            <h5 class="fw-bold mb-4">Последние записи в журнале ТО</h5>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr class="text-muted small text-uppercase">
-                            <th class="ps-3">Транспорт</th>
-                            <th>Период простоя</th>
-                            <th>Дней</th>
-                            <th>Причина</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for entry in maintenances|slice:":10" %}
-                        <tr>
-                            <td class="ps-3">
-                                <div class="fw-bold text-dark">{{ entry.vehicle.name }}</div>
-                            </td>
-                            <td>
-                                <span class="badge bg-light text-dark border">{{ entry.start_date|date:"d.m.y" }}</span>
-                                <span class="mx-1 text-muted">→</span>
-                                <span class="badge bg-dark text-white">{{ entry.end_date|date:"d.m.y" }}</span>
-                            </td>
-                            <td>
-                                <span class="small fw-bold">{{ entry.duration_days }} дн.</span>
-                            </td>
-                            <td class="text-muted small">{{ entry.reason }}</td>
-                            <td class="text-end pe-3">
-                                <a href="{% url 'vehicle_maintenance_detail' entry.vehicle.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">История</a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">Записей о ремонтах пока нет</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    <!-- Журнал логов -->
+    <div class="dashboard-card shadow-sm mb-5">
+        <div class="p-4 border-bottom">
+            <h5 class="fw-bold mb-0">Архив технического обслуживания</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-clean align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Транспортное средство</th>
+                        <th>Период простоя</th>
+                        <th>Длительность</th>
+                        <th>Основание / Причина</th>
+                        <th class="text-end pe-4">Управление</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in maintenances|slice:":10" %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-slate-900">{{ entry.vehicle.name }}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Cargo ID: {{ entry.vehicle.id }}</div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge badge-outline rounded-1">{{ entry.start_date|date:"d.m.y" }}</span>
+                                <i class="bi bi-arrow-right text-muted"></i>
+                                <span class="badge bg-dark text-white rounded-1 border-0">{{ entry.end_date|date:"d.m.y" }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="fw-bold text-slate-900">{{ entry.duration_days }}</span> <small class="text-muted">дн.</small>
+                        </td>
+                        <td>
+                            <div class="text-muted" style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {{ entry.reason }}
+                            </div>
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="{% url 'vehicle_maintenance_detail' entry.vehicle.id %}" class="btn btn-sm btn-light fw-bold border px-3">
+                                История
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">Нет актуальных записей в журнале ТО</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
